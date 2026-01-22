@@ -24,3 +24,34 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+/* ===== Blockly zoom controls (fix khi thiếu css) ===== */
+.blocklyZoom {
+  position: absolute !important;
+  right: 12px !important;
+  bottom: 72px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  z-index: 999 !important;
+}
+
+.blocklyZoom > image,
+.blocklyZoom > svg {
+  display: block !important;
+}
+
+.blocklyZoom > .blocklyZoomIn,
+.blocklyZoom > .blocklyZoomOut,
+.blocklyZoom > .blocklyZoomReset {
+  width: 36px !important;
+  height: 36px !important;
+  cursor: pointer !important;
+  opacity: 0.85 !important;
+}
+
+.blocklyZoom > .blocklyZoomIn:hover,
+.blocklyZoom > .blocklyZoomOut:hover,
+.blocklyZoom > .blocklyZoomReset:hover {
+  opacity: 1 !important;
+}
+
