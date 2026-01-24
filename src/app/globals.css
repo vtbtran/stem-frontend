@@ -1,8 +1,18 @@
 @import "tailwindcss";
 
+/* ===== Theme variables ===== */
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  --blockly-trash-color: #94a3b8;
+  /* slate-400 */
+  --blockly-trash-active-color: #ef4444;
+  /* red-500 */
+  --blockly-trash-stroke: #64748b;
+  /* slate-500 */
+  --blockly-trash-active-stroke: #b91c1c;
+  /* red-700 */
 }
 
 @theme inline {
@@ -19,13 +29,76 @@
   }
 }
 
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
-/* ===== Blockly zoom controls (fix khi thiếu css) ===== */
-.blocklyZoom {
+
+/* =========================================================
+   Blockly scope: only affect inside your blockly host
+   (IMPORTANT: host div must have class .blockly-host)
+   ========================================================= */
+.blockly-host {
+  position: relative;
+}
+
+/* ===== Split Side-by-Side Layout ===== */
+
+/* Toolbox Panel */
+.blockly-host .blocklyToolboxDiv {
+  background-color: #f1f5f9 !important;
+  /* Slate 100 */
+  border-right: 1px solid #e2e8f0 !important;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+}
+
+/* Flyout Panel background */
+.blockly-host .blocklyFlyoutBackground {
+  fill: #ffffff !important;
+  fill-opacity: 1 !important;
+}
+
+/* Flyout Panel */
+.blockly-host .blocklyFlyout {
+  border-right: 2px solid #e2e8f0 !important;
+  box-shadow: 10px 0 20px rgba(0, 0, 0, 0.05);
+}
+
+/* Workspace background */
+.blockly-host .blocklyMainBackground {
+  stroke-width: 0 !important;
+}
+
+/* Flyout scrollbar */
+.blockly-host .blocklyFlyout .blocklyScrollbarHandle {
+  fill: #cbd5e1 !important;
+}
+
+/* ===== Divider line (FIX: don't use ::before on SVG .blocklyWorkspace) ===== */
+.blockly-host::before {
+  content: "";
+  position: absolute;
+  left: 380px;
+  /* TOOLBOX (140) + FLYOUT (240) */
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #f1f5f9;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* =========================================================
+   Zoom controls
+   ========================================================= */
+.blockly-host .blocklyZoom {
   position: absolute !important;
   right: 12px !important;
   bottom: 72px !important;
@@ -35,23 +108,115 @@ body {
   z-index: 999 !important;
 }
 
-.blocklyZoom > image,
-.blocklyZoom > svg {
+.blockly-host .blocklyZoom>image,
+.blockly-host .blocklyZoom>svg {
   display: block !important;
 }
 
-.blocklyZoom > .blocklyZoomIn,
-.blocklyZoom > .blocklyZoomOut,
-.blocklyZoom > .blocklyZoomReset {
+.blockly-host .blocklyZoom>.blocklyZoomIn,
+.blockly-host .blocklyZoom>.blocklyZoomOut,
+.blockly-host .blocklyZoom>.blocklyZoomReset {
   width: 36px !important;
   height: 36px !important;
   cursor: pointer !important;
   opacity: 0.85 !important;
 }
 
-.blocklyZoom > .blocklyZoomIn:hover,
-.blocklyZoom > .blocklyZoomOut:hover,
-.blocklyZoom > .blocklyZoomReset:hover {
+.blockly-host .blocklyZoom>.blocklyZoomIn:hover,
+.blockly-host .blocklyZoom>.blocklyZoomOut:hover,
+.blockly-host .blocklyZoom>.blocklyZoomReset:hover {
   opacity: 1 !important;
 }
 
+/* =========================================================
+   Trashcan (FIX: robust selectors)
+   - Many Blockly versions do NOT have .blocklyIconShape/.blocklyIconLid
+   - So colorize actual SVG shapes: path/rect/polygon/circle
+   ========================================================= */
+
+/* Default */
+/* ===== Trashcan robust highlight (works across versions) ===== */
+:root {
+  --blockly-trash-color: #94a3b8;
+  /* slate-400 */
+  --blockly-trash-active: #ef4444;
+  /* red-500 */
+  --blockly-trash-stroke: #64748b;
+  /* slate-500 */
+  --blockly-trash-active-stroke: #b91c1c;
+  /* red-700 */
+}
+
+/* Default colorize all shapes inside trash */
+.blocklyTrashcan path,
+.blocklyTrashcan rect,
+.blocklyTrashcan polygon,
+.blocklyTrashcan circle,
+.blocklyTrash path,
+.blocklyTrash rect,
+.blocklyTrash polygon,
+.blocklyTrash circle {
+  fill: var(--blockly-trash-color) !important;
+  stroke: var(--blockly-trash-stroke) !important;
+  transition: fill 0.15s ease, stroke 0.15s ease, opacity 0.15s ease;
+}
+
+/* While dragging: make it a bit brighter */
+.blockly-dragging-active .blocklyTrashcan path,
+.blockly-dragging-active .blocklyTrashcan rect,
+.blockly-dragging-active .blocklyTrash path,
+.blockly-dragging-active .blocklyTrash rect {
+  fill: #cbd5e1 !important;
+  /* slate-300 */
+}
+
+/* Highlight when block is OVER trash (handle both class names) */
+.blocklyTrashcan.blocklyTrashcanHighlight path,
+.blocklyTrashcan.blocklyTrashcanHighlight rect,
+.blocklyTrashcan.blocklyTrashcanHighlight polygon,
+.blocklyTrashcan.blocklyTrashcanHighlight circle,
+.blocklyTrash.blocklyTrashHighlight path,
+.blocklyTrash.blocklyTrashHighlight rect,
+.blocklyTrash.blocklyTrashHighlight polygon,
+.blocklyTrash.blocklyTrashHighlight circle {
+  fill: var(--blockly-trash-active) !important;
+  stroke: var(--blockly-trash-active-stroke) !important;
+}
+
+/* =========================================================
+   Blockly & Tailwind compatibility (safer)
+   - Avoid forcing content-box everywhere (can break layout)
+   ========================================================= */
+
+/* Keep SVG image rendering correct if any global rules affect it */
+.blockly-host .blocklySvg image {
+  display: inline-block;
+}
+
+/* Ensure hidden elements are hidden */
+.blockly-host .blocklyHidden {
+  display: none !important;
+}
+
+/* (Optional) If Tailwind preflight causes issues with inputs/buttons inside Blockly widgets,
+   uncomment these:
+*/
+/*
+.blockly-host .blocklyWidgetDiv,
+.blockly-host .blocklyDropDownDiv,
+.blockly-host .blocklyTooltipDiv {
+  font-family: inherit;
+  line-height: normal;
+}
+*/
+
+/* ===== Hide Vercel Toolbar ===== */
+#vercel-toolbar-container,
+.__next-vercel-toolbar,
+div[id^="vercel-toolbar-"],
+vercel-live-feedback {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

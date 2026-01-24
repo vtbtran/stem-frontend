@@ -1,0 +1,71 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Definitions for Gradients -->
+  <defs>
+    <linearGradient id="body_grad" x1="0" y1="50" x2="200" y2="150" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="50%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <linearGradient id="glass_grad" x1="80" y1="50" x2="140" y2="150" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#93C5FD" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#60A5FA" stop-opacity="0.6"/>
+    </linearGradient>
+    <filter id="shadow_blur">
+      <feGaussianBlur stdDeviation="4"/>
+    </filter>
+  </defs>
+
+  <!-- Shadow below car -->
+  <ellipse cx="100" cy="110" rx="90" ry="40" fill="black" fill-opacity="0.3" filter="url(#shadow_blur)"/>
+
+  <!-- Car Group -->
+  <g transform="rotate(0, 100, 100)">
+    
+    <!-- Rear Spoiler -->
+    <path d="M20 70 L40 70 L45 50 L15 50 L20 70 Z" fill="#1E40AF"/> <!-- Left Wing -->
+    <path d="M20 130 L40 130 L45 150 L15 150 L20 130 Z" fill="#1E40AF"/> <!-- Right Wing -->
+    <rect x="15" y="60" width="10" height="80" rx="2" fill="#1E3A8A"/> <!-- Crossbar -->
+
+    <!-- Main Body Shape -->
+    <!-- Sleek aerodynamic shape: Pointy front (Right), wider back (Left) -->
+    <path d="M30 65 
+             L160 80 
+             Q190 100 160 120 
+             L30 135 
+             Q10 100 30 65 Z" 
+          fill="url(#body_grad)" stroke="#172554" stroke-width="2"/>
+
+    <!-- Cockpit / Windshield -->
+    <!-- Teardrop shape in center -->
+    <path d="M80 75 
+             L130 90 
+             Q140 100 130 110 
+             L80 125 
+             Q60 100 80 75 Z" 
+          fill="url(#glass_grad)" stroke="#BFDBFE" stroke-width="1"/>
+
+    <!-- Engine Vents (Rear) -->
+    <rect x="40" y="85" width="20" height="5" rx="2" fill="#1E3A8A"/>
+    <rect x="40" y="97" width="20" height="5" rx="2" fill="#1E3A8A"/>
+    <rect x="40" y="109" width="20" height="5" rx="2" fill="#1E3A8A"/>
+
+    <!-- Headlights (Front - Right side) -->
+    <!-- Sleek LED strips -->
+    <path d="M165 85 L185 88 L165 91 Z" fill="#FEF08A" style="filter: drop-shadow(0 0 2px #FDE047);"/>
+    <path d="M165 109 L185 112 L165 115 Z" fill="#FEF08A" style="filter: drop-shadow(0 0 2px #FDE047);"/>
+
+    <!-- Tail Lights (Back - Left side) -->
+    <rect x="28" y="70" width="4" height="20" rx="1" fill="#EF4444" style="filter: drop-shadow(0 0 2px #EF4444);"/>
+    <rect x="28" y="110" width="4" height="20" rx="1" fill="#EF4444" style="filter: drop-shadow(0 0 2px #EF4444);"/>
+
+    <!-- Wheels (Visible parts) -->
+    <rect x="40" y="55" width="25" height="10" rx="3" fill="#1F2937"/>
+    <rect x="40" y="135" width="25" height="10" rx="3" fill="#1F2937"/>
+    <rect x="130" y="60" width="25" height="10" rx="3" fill="#1F2937"/>
+    <rect x="130" y="130" width="25" height="10" rx="3" fill="#1F2937"/>
+
+    <!-- Direction Arrow on Hood -->
+    <path d="M100 90 L120 100 L100 110" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
+
+  </g>
+</svg>

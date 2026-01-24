@@ -1,2 +1,4 @@
 import { javascriptGenerator } from "blockly/javascript";
-export { javascriptGenerator };
+import { pythonGenerator } from "blockly/python";
+
+export { javascriptGenerator, pythonGenerator };

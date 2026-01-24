@@ -1,0 +1,86 @@
+/* =========================================================
+   Blockly custom CSS (scoped)
+   IMPORTANT: host div must have class .blockly-host
+   NOTE:
+   - You are using custom Zoom + custom Trash (Tailwind buttons)
+   - So DO NOT style .blocklyZoom / .blocklyTrash here (Blockly won't render them)
+   ========================================================= */
+
+.blockly-host {
+  position: relative;
+}
+
+/* ---------- Tailwind compatibility fixes ---------- */
+/* Tailwind reset can break Blockly SVG sizing/box model */
+.blockly-host .blocklySvg,
+.blockly-host .blocklySvg *,
+.blockly-host .blocklyWidgetDiv,
+.blockly-host .blocklyWidgetDiv *,
+.blockly-host .blocklyTooltipDiv,
+.blockly-host .blocklyTooltipDiv *,
+.blockly-host .blocklyDropDownDiv,
+.blockly-host .blocklyDropDownDiv * {
+  box-sizing: content-box;
+}
+
+/* Tailwind sometimes forces image display:block; keep SVG image behavior */
+.blockly-host .blocklySvg image {
+  display: inline-block;
+}
+
+.blockly-host .blocklyHidden {
+  display: none !important;
+}
+
+/* ---------- Toolbox ---------- */
+.blockly-host .blocklyToolboxDiv {
+  background-color: #f1f5f9 !important; /* slate-100 */
+  border-right: 1px solid #e2e8f0 !important;
+  box-shadow: 2px 0 8px rgba(2, 6, 23, 0.05);
+}
+
+/* ---------- Flyout ---------- */
+.blockly-host .blocklyFlyoutBackground {
+  fill: #ffffff !important;
+  fill-opacity: 1 !important;
+}
+
+.blockly-host .blocklyFlyout {
+  border-right: 2px solid #e2e8f0 !important;
+  box-shadow: 10px 0 20px rgba(2, 6, 23, 0.06);
+}
+
+/* Flyout scrollbar */
+.blockly-host .blocklyFlyout .blocklyScrollbarHandle {
+  fill: #cbd5e1 !important; /* slate-300 */
+}
+
+/* Workspace scrollbar (main) */
+.blockly-host .blocklyScrollbarHandle {
+  fill: #cbd5e1 !important;
+}
+
+.blockly-host .blocklyScrollbarBackground {
+  fill: rgba(15, 23, 42, 0.04) !important;
+}
+
+/* Background grid / main area */
+.blockly-host .blocklyMainBackground {
+  stroke-width: 0 !important;
+}
+
+/* ---------- Optional divider line (HTML overlay) ----------
+   NOTE: This is just a visual line. It does NOT auto follow toolbox width.
+   If you change toolbox/flyout width, update left accordingly.
+*/
+.blockly-host::before {
+  content: "";
+  position: absolute;
+  left: 380px; /* TOOLBOX (140) + FLYOUT (240) */
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #f1f5f9;
+  z-index: 2;
+  pointer-events: none;
+}
