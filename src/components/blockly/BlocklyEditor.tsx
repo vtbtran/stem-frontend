@@ -14,7 +14,7 @@ const BlocklyWorkspace = dynamic(() => import("./BlocklyWorkspace"), { ssr: fals
 
 export default function BlocklyEditor() {
   const [code, setCode] = useState<string>("");
-  const [language, setLanguage] = useState<"js" | "py">("py");
+  const [language, setLanguage] = useState<"js" | "py" | "cpp">("py");
   const [showPanel, setShowPanel] = useState<boolean>(false);
   const [simState, setSimState] = useState<{ w: number; h: number }>({
     w: 256,
@@ -272,10 +272,11 @@ export default function BlocklyEditor() {
                 <select
                   className="rounded-md border border-white/10 px-2 py-0.5 text-[10px] font-bold outline-none bg-zinc-800 text-zinc-300 hover:border-zinc-500 transition-colors"
                   value={language}
-                  onChange={(e) => setLanguage(e.target.value as "js" | "py")}
+                  onChange={(e) => setLanguage(e.target.value as "js" | "py" | "cpp")}
                 >
                   <option value="js">JS</option>
                   <option value="py">Python</option>
+                  <option value="cpp">C++</option>
                 </select>
               </div>
 

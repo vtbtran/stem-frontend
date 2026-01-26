@@ -1,5 +1,5 @@
 import * as Blockly from "blockly";
-import { javascriptGenerator, pythonGenerator } from "@/lib/blockly/generators";
+import { javascriptGenerator, pythonGenerator, cppGenerator } from "@/lib/blockly/generators";
 
 export const defineControlBlocks = () => {
 
@@ -29,6 +29,11 @@ export const defineControlBlocks = () => {
     };
 
 
+    // Generator - C++
+    (cppGenerator as any).forBlock['event_start'] = function (block: Blockly.Block) {
+        return '';
+    };
+
     // Loop: Forever
     Blockly.Blocks['control_forever'] = {
         init: function () {
@@ -57,6 +62,12 @@ export const defineControlBlocks = () => {
         return `while True:\n${branch}  import asyncio\n  await asyncio.sleep(0.01)\n`;
     };
 
+    // Generator - C++
+    (cppGenerator as any).forBlock['control_forever'] = function (block: Blockly.Block) {
+        const branch = (cppGenerator as any).statementToCode(block, 'DO');
+        return `while (true) {\n${branch}}\n`;
+    };
+
     // Command: Stop
     Blockly.Blocks['control_stop'] = {
         init: function () {
@@ -75,5 +86,9 @@ export const defineControlBlocks = () => {
 
     pythonGenerator.forBlock['control_stop'] = function (block: Blockly.Block) {
         return "raise Exception('STOP')\n";
+    };
+
+    (cppGenerator as any).forBlock['control_stop'] = function (block: Blockly.Block) {
+        return "return;\n";
     };
 };

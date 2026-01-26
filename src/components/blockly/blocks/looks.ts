@@ -1,6 +1,6 @@
 
 import * as Blockly from "blockly";
-import { javascriptGenerator, pythonGenerator } from "@/lib/blockly/generators";
+import { javascriptGenerator, pythonGenerator, cppGenerator } from "@/lib/blockly/generators";
 
 export const defineLooksBlocks = () => {
 
@@ -31,5 +31,11 @@ export const defineLooksBlocks = () => {
         const msg = block.getFieldValue('MESSAGE');
         const secs = block.getFieldValue('SECS');
         return `await say("${msg}", ${secs})\n`;
+    };
+
+    (cppGenerator as any).forBlock['looks_say'] = function (block: Blockly.Block) {
+        const msg = block.getFieldValue('MESSAGE');
+        const secs = block.getFieldValue('SECS');
+        return `say("${msg}", ${secs});\n`;
     };
 };

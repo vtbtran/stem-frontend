@@ -1,6 +1,6 @@
 
 import * as Blockly from "blockly";
-import { javascriptGenerator, pythonGenerator } from "@/lib/blockly/generators";
+import { javascriptGenerator, pythonGenerator, cppGenerator } from "@/lib/blockly/generators";
 
 export const defineSoundBlocks = () => {
 
@@ -23,6 +23,10 @@ export const defineSoundBlocks = () => {
 
     pythonGenerator.forBlock['sound_beep'] = function (block: Blockly.Block) {
         return "await beep()\n";
+    };
+
+    (cppGenerator as any).forBlock['sound_beep'] = function (block: Blockly.Block) {
+        return "beep();\n";
     };
 
     // Sound: Play Tone
@@ -52,5 +56,11 @@ export const defineSoundBlocks = () => {
         const freq = block.getFieldValue('FREQ');
         const dur = block.getFieldValue('DURATION');
         return `await tone(${freq}, ${dur})\n`;
+    };
+
+    (cppGenerator as any).forBlock['sound_tone'] = function (block: Blockly.Block) {
+        const freq = block.getFieldValue('FREQ');
+        const dur = block.getFieldValue('DURATION');
+        return `tone(${freq}, ${dur});\n`;
     };
 };

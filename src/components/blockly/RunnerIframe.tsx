@@ -4,8 +4,13 @@ import React from "react";
 
 type RunnerIframeProps = {
   getCode: () => string;
-  language: "js" | "py";
+  language: "js" | "py" | "cpp";
 };
+
+import { COMMON_SCRIPT } from "@/lib/runner-scripts/common";
+import { JS_SCRIPT } from "@/lib/runner-scripts/js";
+import { PYTHON_SCRIPT } from "@/lib/runner-scripts/py";
+import { CPP_SCRIPT } from "@/lib/runner-scripts/cpp";
 
 const IFRAME_HTML = `<!doctype html>
 <html>
@@ -15,125 +20,23 @@ const IFRAME_HTML = `<!doctype html>
 </head>
 <body>
 <script>
-  // --- 1. SETUP ENVIRONMENT & HELPERS (Run Once) ---
-  const oldLog = console.log;
-  console.log = (...args) => {
-    parent.postMessage({ type: "blockly_log", args }, "*");
-    oldLog(...args);
-  };
+  ${COMMON_SCRIPT}
+  ${JS_SCRIPT}
+  ${PYTHON_SCRIPT}
+  ${CPP_SCRIPT}
 
-  window.alert = (...args) => {
-    parent.postMessage({ type: "blockly_log", args: ["[Alert]", ...args] }, "*");
-  };
-
-  window.onerror = (msg, url, line, col, error) => {
-    parent.postMessage({ type: "blockly_error", error: String(msg) }, "*");
-    return false;
-  };
-
-  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-  // Motion Helpers
-  window.moveForward = async (s) => {
-     console.log(\`➡️ Di chuyển tới \${s} bước\`);
-     parent.postMessage({ type: "blockly_motion", action: "move", value: Number(s) }, "*");
-     await sleep(400); 
-  };
-  window.moveBackward = async (s) => {
-     console.log(\`⬅️ Di chuyển lùi \${s} bước\`);
-     parent.postMessage({ type: "blockly_motion", action: "move", value: -Number(s) }, "*");
-     await sleep(400);
-  };
-  window.turnLeft = async (d) => {
-     console.log(\`↩️ Xoay trái \${d} độ\`);
-     parent.postMessage({ type: "blockly_motion", action: "turn", value: -Number(d) }, "*");
-     await sleep(400);
-  };
-  window.turnRight = async (d) => {
-     console.log(\`↪️ Xoay phải \${d} độ\`);
-     parent.postMessage({ type: "blockly_motion", action: "turn", value: Number(d) }, "*");
-     await sleep(400);
-  };
-
-  // Sound Helpers
-  window.beep = async () => {
-     console.log(\`🔔 Phát tiếng bíp\`);
-     parent.postMessage({ type: "blockly_sound", action: "beep" }, "*");
-     await sleep(300);
-  };
-  window.tone = async (freq, dur) => {
-     console.log(\`🎵 Phát nốt \${freq}Hz\`);
-     parent.postMessage({ type: "blockly_sound", action: "tone", value: { freq: Number(freq), dur: Number(dur) } }, "*");
-     await sleep(Number(dur) * 1000);
-  };
-
-  // Time-based Motion
-  window.moveForwardTime = async (s, t) => {
-     console.log(\`➡️ Di chuyển tới \${s} bước trong \${t}s\`);
-     parent.postMessage({ type: "blockly_motion", action: "move", value: { val: Number(s), dur: Number(t) } }, "*");
-     await sleep(Number(t) * 1000);
-  };
-  window.moveBackwardTime = async (s, t) => {
-     console.log(\`⬅️ Di chuyển lùi \${s} bước trong \${t}s\`);
-     parent.postMessage({ type: "blockly_motion", action: "move", value: { val: -Number(s), dur: Number(t) } }, "*");
-     await sleep(Number(t) * 1000);
-  };
-
-  // Basic Look Helpers
-  window.say = async (text, duration) => {
-     console.log(\`💬 Nói: "\${text}"\`);
-     parent.postMessage({ type: "blockly_look", action: "say", value: { text: String(text), duration: Number(duration) } }, "*");
-     await sleep(Number(duration) * 1000);
-  };
-
-  // --- 2. PYTHON LOADING LOGIC ---
-  let pyodideReady = false;
-  let pyodideLoading = false;
-
-  async function ensurePyodide() {
-    if (pyodideReady) return true;
-    if (pyodideLoading) {
-      // Wait until ready
-      while (pyodideLoading && !pyodideReady) await sleep(100);
-      return pyodideReady;
-    }
-
-    pyodideLoading = true;
-    parent.postMessage({ type: "blockly_log", args: ["➡️ Đang khởi tạo môi trường Python..."] }, "*");
-    try {
-      window.pyodide = await loadPyodide({
-        stdout: (text) => parent.postMessage({ type: "blockly_log", args: [text] }, "*"),
-        stderr: (text) => parent.postMessage({ type: "blockly_error", error: text }, "*")
-      });
-      pyodideReady = true;
-      pyodideReady = true;
-      parent.postMessage({ type: "blockly_log", args: ["✅ Môi trường Python đã sẵn sàng!"] }, "*");
-      return true;
-    } catch (e) {
-      parent.postMessage({ type: "blockly_error", error: "❌ Không thể tải thư viện Python: " + String(e) }, "*");
-      pyodideLoading = false;
-      return false;
-    }
-  }
-
-  // --- 3. EXECUTION HANDLER ---
+  // --- EXECUTION HANDLER ---
   window.addEventListener("message", async (event) => {
     const { type, code, language } = event.data;
     
     if (type === "run") {
       try {
         if (language === "py") {
-          const ready = await ensurePyodide();
-          if (!ready) return;
-
-          const pythonSetup = "import js\\nasync def move_forward(s): await js.moveForward(s)\\nasync def move_backward(s): await js.moveBackward(s)\\nasync def turn_left(d): await js.turnLeft(d)\\nasync def turn_right(d): await js.turnRight(d)\\nasync def move_forward_time(s, t): await js.moveForwardTime(s, t)\\nasync def move_backward_time(s, t): await js.moveBackwardTime(s, t)\\nasync def say(t, d): await js.say(t, d)\\nasync def beep(): await js.beep()\\nasync def tone(f, d): await js.tone(f, d)\\n";
-          
-          await window.pyodide.runPythonAsync(pythonSetup + code);
+          await runPython(code);
+        } else if (language === "cpp") {
+           await runCppSimulation(code);
         } else {
-          // Javascript Execution
-          const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-          const func = new AsyncFunction(code);
-          await func();
+           await runJs(code);
         }
       } catch (err) {
         parent.postMessage({ type: "blockly_error", error: String(err) }, "*");
@@ -163,6 +66,8 @@ export default function RunnerIframe({ getCode, language }: RunnerIframeProps) {
     const runCode = (codeToRun: string) => {
       const iframe = iframeRef.current;
       if (!iframe || !iframe.contentWindow) return;
+
+      console.log("RunnerIframe: Executing code...", { language: languageRef.current, len: codeToRun.length });
 
       // Send message to iframe to execute code logic
       iframe.contentWindow.postMessage({

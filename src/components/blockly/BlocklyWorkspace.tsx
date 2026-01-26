@@ -5,7 +5,7 @@ import * as Blockly from "blockly";
 import "blockly/blocks";
 import "blockly/javascript";
 import "blockly/python";
-import { javascriptGenerator, pythonGenerator } from "@/lib/blockly/generators";
+import { javascriptGenerator, pythonGenerator, cppGenerator } from "@/lib/blockly/generators";
 import { TOOLBOX_XML } from "./toolbox";
 import PromptModal from "../PromptModal";
 import { defineMotionBlocks } from "./blocks/motion";
@@ -20,7 +20,7 @@ defineSoundBlocks();
 defineLooksBlocks();
 
 type Props = {
-  language: "js" | "py";
+  language: "js" | "py" | "cpp";
   onCode?: (code: string) => void;
   getInitialXml?: () => string;
   onXmlChange?: (xml: string) => void;
@@ -67,7 +67,10 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
     if (!ws) return;
 
     const currentLang = languageRef.current;
-    const generator = currentLang === "py" ? pythonGenerator : javascriptGenerator;
+    let generator: any; // Use any to avoid strict type mismatch
+    if (currentLang === "py") generator = pythonGenerator;
+    else if (currentLang === "cpp") generator = cppGenerator;
+    else generator = javascriptGenerator;
 
     try {
       const code = generator.workspaceToCode(ws);
@@ -305,14 +308,18 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
           const block = ws.getBlockById(clickEvent.blockId);
           if (block && block.type === 'event_start') {
             const currentLang = languageRef.current;
-            const generator = currentLang === "py" ? pythonGenerator : javascriptGenerator;
+            let generator: any;
+            if (currentLang === "py") generator = pythonGenerator;
+            else if (currentLang === "cpp") generator = cppGenerator;
+            else generator = javascriptGenerator;
 
             // Unlock AudioContext on interaction
             import("@/lib/audio/SimpleSynth").then(({ synth }) => synth.init());
-            
+
             generator.init(ws);
             const code = generator.blockToCode(block) as string;
-            console.log("Running stack:", code);
+            console.log("DEBUG: Clicked block, generated code:", code);
+            console.log("DEBUG: Current language:", currentLang);
             window.dispatchEvent(new CustomEvent("blockly:run_stack", { detail: { code } }));
           }
         }
