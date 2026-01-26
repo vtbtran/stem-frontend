@@ -6,6 +6,7 @@ import CodePanel from "./CodePanel";
 import Terminal from "./Terminal";
 import Stage from "./Stage";
 import RunnerIframe from "./RunnerIframe";
+import HardwareConnect from "./HardwareConnect";
 import { motion, useDragControls } from "framer-motion";
 import { synth } from "@/lib/audio/SimpleSynth";
 import { BlocklyCodeEvent, BlocklyStageSoundEvent } from "@/types/events";
@@ -231,15 +232,18 @@ export default function BlocklyEditor() {
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span>Workspace</span>
               </div>
-              <button
-                onClick={() => setShowPanel(true)}
-                className="flex items-center gap-2 px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full bg-zinc-900 text-white border-zinc-800 hover:bg-black hover:shadow-md transition-all duration-300 shadow-sm"
-              >
-                View Code
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                </svg>
-              </button>
+              <div className="flex items-center gap-2">
+                <HardwareConnect />
+                <button
+                  onClick={() => setShowPanel(true)}
+                  className="flex items-center gap-2 px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full bg-zinc-900 text-white border-zinc-800 hover:bg-black hover:shadow-md transition-all duration-300 shadow-sm"
+                >
+                  View Code
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <div className="min-h-0 flex-1" ref={!showPanel ? activeAreaRef : null}>
               <BlocklyWorkspace
