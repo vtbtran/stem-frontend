@@ -157,6 +157,7 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
       horizontalLayout: false,
 
       trashcan: true,
+      media: "https://unpkg.com/blockly/media/",
       zoom: {
         controls: false,
         wheel: true,
@@ -251,16 +252,16 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
 
     // Initial setup
     ws.clear();
-    
+
     // Load initial XML if provided (Persistence)
     const initialXml = getInitialXml?.();
     if (initialXml) {
-       try {
-           const dom = Blockly.utils.xml.textToDom(initialXml);
-           Blockly.Xml.domToWorkspace(dom, ws);
-       } catch (e) {
-           console.error("Failed to load initial XML", e);
-       }
+      try {
+        const dom = Blockly.utils.xml.textToDom(initialXml);
+        Blockly.Xml.domToWorkspace(dom, ws);
+      } catch (e) {
+        console.error("Failed to load initial XML", e);
+      }
     }
 
     ensureToolboxSelected();
@@ -303,8 +304,14 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
         if (clickEvent.blockId) {
           const block = ws.getBlockById(clickEvent.blockId);
           if (block && block.type === 'event_start') {
-            javascriptGenerator.init(ws);
-            const code = javascriptGenerator.blockToCode(block) as string;
+            const currentLang = languageRef.current;
+            const generator = currentLang === "py" ? pythonGenerator : javascriptGenerator;
+
+            // Unlock AudioContext on interaction
+            import("@/lib/audio/SimpleSynth").then(({ synth }) => synth.init());
+            
+            generator.init(ws);
+            const code = generator.blockToCode(block) as string;
             console.log("Running stack:", code);
             window.dispatchEvent(new CustomEvent("blockly:run_stack", { detail: { code } }));
           }
@@ -361,16 +368,21 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
           type="button"
           onClick={zoomReset}
           className="h-11 w-11 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200
-               shadow-[0_10px_25px_rgba(37,99,235,0.15)]
-               hover:bg-blue-100 hover:shadow-[0_14px_30px_rgba(37,99,235,0.2)]
-               active:scale-[0.98] transition grid place-items-center"
+            shadow-[0_10px_25px_rgba(37,99,235,0.15)]
+            hover:bg-blue-100 hover:shadow-[0_14px_30px_rgba(37,99,235,0.2)]
+            active:scale-[0.98] transition grid place-items-center"
           title="Reset"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2a10 10 0 1 0 10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            <path d="M22 2v6h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" />
+            <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+            <path d="M12 2v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <path d="M12 18v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <path d="M2 12h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <path d="M18 12h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </button>
+
 
         {/* Zoom in */}
         <button

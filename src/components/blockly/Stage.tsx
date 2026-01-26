@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
+import { BlocklyStageMotionEvent, BlocklyStageLookEvent } from "@/types/events";
 
 export default function Stage() {
     const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -33,15 +34,26 @@ export default function Stage() {
     const xTicks = Array.from({ length: maxX - minX + 1 }, (_, i) => minX + i).filter(x => x !== 0);
     const yTicks = Array.from({ length: maxY - minY + 1 }, (_, i) => minY + i).filter(y => y !== 0);
 
+    // Use refs for state access in event listeners to avoid re-binding
+    const rotationRef = useRef(rotation);
+    const positionRef = useRef(position);
+
     useEffect(() => {
-        const handleMotion = (e: Event) => {
-            const ce = e as CustomEvent<{ type: string; value: number | { val: number; dur: number } | { x: number; y: number } }>;
-            const { type, value } = ce.detail;
+        rotationRef.current = rotation;
+    }, [rotation]);
+
+    useEffect(() => {
+        positionRef.current = position;
+    }, [position]);
+
+    useEffect(() => {
+        const handleMotion = (e: BlocklyStageMotionEvent) => {
+            const { type, value } = e.detail;
 
             if (type === "MOTION_MOVE") {
                 let steps = 0;
                 let duration = 0.4;
-                
+
                 if (typeof value === 'number') {
                     steps = value;
                 } else if (typeof value === 'object' && 'val' in value) {
@@ -53,8 +65,13 @@ export default function Stage() {
                 setTransitionDuration(0);
 
                 // Capture current position for animation
+                // We use setPosition callback to ensure we have the latest state for the update,
+                // but we need rotation from the Ref because it's used in the calculation logic.
                 setPosition(currentPos => {
-                    const rad = (rotation * Math.PI) / 180;
+                    // Use ref for rotation to get the latest value without dependency
+                    const currentRotation = rotationRef.current;
+                    const rad = (currentRotation * Math.PI) / 180;
+
                     const totalDist = steps * 50;
                     const startX = currentPos.x;
                     const startY = currentPos.y;
@@ -68,59 +85,60 @@ export default function Stage() {
                         const progress = Math.min(elapsed / durationMs, 1);
                         // Ease-out cubic
                         const eased = 1 - Math.pow(1 - progress, 3);
-                        
+
                         const newX = startX + (endX - startX) * eased;
                         const newY = startY + (endY - startY) * eased;
-                        
+
                         setPosition({ x: newX, y: newY });
+                        // Also update ref here if needed for immediate synchronous reads elsewhere, 
+                        // though setPosition update will trigger the effect to update ref eventually.
 
                         if (progress < 1) {
                             requestAnimationFrame(animate);
                         }
                     };
-                    
+
                     requestAnimationFrame(animate);
                     return currentPos; // Return unchanged initially
                 });
 
             } else if (type === "MOTION_TURN") {
-                 let deg = 0;
-                 let duration = 0.4;
-                 if (typeof value === 'number') { deg = value; }
-                 else if (typeof value === 'object' && 'val' in value) { deg = value.val; duration = value.dur; }
-                 
-                 setTransitionDuration(0);
-                 const durationMs = duration * 1000;
-                 const startTime = performance.now();
-                 let animatedDeg = 0;
+                let deg = 0;
+                let duration = 0.4;
+                if (typeof value === 'number') { deg = value; }
+                else if (typeof value === 'object' && 'val' in value) { deg = value.val; duration = value.dur; }
 
-                 const animate = (now: number) => {
-                     const elapsed = now - startTime;
-                     const progress = Math.min(elapsed / durationMs, 1);
-                     const eased = 1 - Math.pow(1 - progress, 3);
-                     const newAnimDeg = deg * eased;
-                     const delta = newAnimDeg - animatedDeg;
-                     animatedDeg = newAnimDeg;
-                     
-                     setRotation(prev => prev + delta);
+                setTransitionDuration(0);
+                const durationMs = duration * 1000;
+                const startTime = performance.now();
+                let animatedDeg = 0;
 
-                     if (progress < 1) {
-                         requestAnimationFrame(animate);
-                     }
-                 };
-                 requestAnimationFrame(animate);
+                const animate = (now: number) => {
+                    const elapsed = now - startTime;
+                    const progress = Math.min(elapsed / durationMs, 1);
+                    const eased = 1 - Math.pow(1 - progress, 3);
+                    const newAnimDeg = deg * eased;
+                    const delta = newAnimDeg - animatedDeg;
+                    animatedDeg = newAnimDeg;
+
+                    setRotation(prev => prev + delta);
+
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    }
+                };
+                requestAnimationFrame(animate);
 
             } else if (type === "MOTION_GOTO" && typeof value === 'object' && 'x' in value) {
-                 setTransitionDuration(0);
-                 setPosition({ x: value.x, y: value.y });
+                setTransitionDuration(0);
+                setPosition({ x: value.x, y: value.y });
             }
         };
 
-        const handleLook = (e: Event) => {
-            const ce = e as CustomEvent<{ action: string; value: { text: string; duration: number } }>;
-            if (ce.detail.action === "say") {
-                setSpeechText(ce.detail.value.text);
-                setTimeout(() => setSpeechText(null), ce.detail.value.duration * 1000);
+        const handleLook = (e: BlocklyStageLookEvent) => {
+            if (e.detail.action === "say") {
+                setSpeechText(e.detail.value.text);
+                setTimeout(() => setSpeechText(null), e.detail.value.duration * 1000);
             }
         };
 
@@ -128,14 +146,10 @@ export default function Stage() {
         window.addEventListener("blockly:stage_look", handleLook);
 
         return () => {
-             window.removeEventListener("blockly:stage_motion", handleMotion);
-             window.removeEventListener("blockly:stage_look", handleLook);
+            window.removeEventListener("blockly:stage_motion", handleMotion);
+            window.removeEventListener("blockly:stage_look", handleLook);
         };
-    }, [rotation]);
-
-    // Use ref to track position for camera follow (avoids stale closures)
-    const positionRef = useRef(position);
-    useEffect(() => { positionRef.current = position; }, [position]);
+    }, []); // Empty dependency array provided as requested for performance optimization
 
     useEffect(() => {
         // Camera Follow Logic - runs continuously at 60fps
@@ -214,7 +228,7 @@ export default function Stage() {
                         ))}
                         <span className="absolute right-0 top-3 text-[10px] font-black text-red-600">X</span>
                     </div>
-                    
+
                     {/* Origin Label (0) */}
                     <span className="absolute left-1/2 top-1/2 -translate-x-[120%] translate-y-[20%] text-[10px] font-black text-zinc-500">
                         0
@@ -224,7 +238,7 @@ export default function Stage() {
                 {/* Projection Lines (Car to Axes) */}
                 <div className="absolute inset-0 pointer-events-none z-0">
                     {/* Horizontal Line to Y-axis (Red dashed, parallel to X) */}
-                    <div 
+                    <div
                         className="absolute h-[2px] border-b-2 border-dashed border-red-500"
                         style={{
                             left: position.x > 0 ? '50%' : `calc(50% + ${position.x}px)`,
@@ -233,7 +247,7 @@ export default function Stage() {
                         }}
                     />
                     {/* Vertical Line to X-axis (Blue dashed, parallel to Y) */}
-                    <div 
+                    <div
                         className="absolute w-[2px] border-l-2 border-dashed border-blue-500"
                         style={{
                             top: position.y > 0 ? '50%' : `calc(50% + ${position.y}px)`,
@@ -256,7 +270,7 @@ export default function Stage() {
                         {/* Speech Bubble */}
                         {speechText && (
                             <div className="absolute -top-20 left-1/2 -translate-x-1/2 bg-white text-zinc-800 text-[12px] px-3 py-2 rounded-2xl shadow-lg border border-zinc-200 z-30 whitespace-nowrap min-w-[60px] text-center"
-                                 style={{ transform: `translateX(-50%) rotate(${-rotation}deg)` }}
+                                style={{ transform: `translateX(-50%) rotate(${-rotation}deg)` }}
                             >
                                 {speechText}
                                 <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-b border-r border-zinc-200 rotate-45 transform" />

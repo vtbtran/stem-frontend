@@ -7,7 +7,7 @@ export const defineControlBlocks = () => {
     Blockly.Blocks['event_start'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField("khi bấm");
+                .appendField("Click để");
             this.appendDummyInput()
                 .appendField("bắt đầu");
             this.setNextStatement(true, null);

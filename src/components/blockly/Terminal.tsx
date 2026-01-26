@@ -37,7 +37,7 @@ export default function Terminal() {
                 if (prev.length === 0) return [];
                 return [{
                     type: "log",
-                    message: "--- Đã dọn dẹp Terminal - Bắt đầu chạy mới ---",
+                    message: "--- 🧹 Terminal đã được dọn dẹp - Bắt đầu chạy mới ---",
                     timestamp: Date.now()
                 }];
             });

@@ -55,7 +55,6 @@
   fill: #cbd5e1 !important; /* slate-300 */
 }
 
-/* Workspace scrollbar (main) */
 .blockly-host .blocklyScrollbarHandle {
   fill: #cbd5e1 !important;
 }
@@ -64,19 +63,14 @@
   fill: rgba(15, 23, 42, 0.04) !important;
 }
 
-/* Background grid / main area */
 .blockly-host .blocklyMainBackground {
   stroke-width: 0 !important;
 }
 
-/* ---------- Optional divider line (HTML overlay) ----------
-   NOTE: This is just a visual line. It does NOT auto follow toolbox width.
-   If you change toolbox/flyout width, update left accordingly.
-*/
 .blockly-host::before {
   content: "";
   position: absolute;
-  left: 380px; /* TOOLBOX (140) + FLYOUT (240) */
+  left: 380px;
   top: 0;
   bottom: 0;
   width: 2px;

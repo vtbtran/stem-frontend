@@ -61,7 +61,7 @@ export const defineMotionBlocks = () => {
     pythonGenerator.forBlock['motion_move_forward_time'] = function (block: Blockly.Block) {
         const steps = block.getFieldValue('STEPS');
         const secs = block.getFieldValue('SECS');
-        return `move_forward_time(${steps}, ${secs})\n`;
+        return `await move_forward_time(${steps}, ${secs})\n`;
     };
 
     // Move Backward (Time)
@@ -90,7 +90,7 @@ export const defineMotionBlocks = () => {
     pythonGenerator.forBlock['motion_move_backward_time'] = function (block: Blockly.Block) {
         const steps = block.getFieldValue('STEPS');
         const secs = block.getFieldValue('SECS');
-        return `move_backward_time(${steps}, ${secs})\n`;
+        return `await move_backward_time(${steps}, ${secs})\n`;
     };
 
     // Turn Left
@@ -149,21 +149,21 @@ export const defineMotionBlocks = () => {
     // Generators - Python
     pythonGenerator.forBlock['motion_move_forward'] = function (block: Blockly.Block) {
         const steps = pythonGenerator.valueToCode(block, 'STEPS', 0) || '0';
-        return `move_forward(${steps})\n`;
+        return `await move_forward(${steps})\n`;
     };
 
     pythonGenerator.forBlock['motion_move_backward'] = function (block: Blockly.Block) {
         const steps = pythonGenerator.valueToCode(block, 'STEPS', 0) || '0';
-        return `move_backward(${steps})\n`;
+        return `await move_backward(${steps})\n`;
     };
 
     pythonGenerator.forBlock['motion_turn_left'] = function (block: Blockly.Block) {
         const degrees = pythonGenerator.valueToCode(block, 'DEGREES', 0) || '0';
-        return `turn_left(${degrees})\n`;
+        return `await turn_left(${degrees})\n`;
     };
 
     pythonGenerator.forBlock['motion_turn_right'] = function (block: Blockly.Block) {
         const degrees = pythonGenerator.valueToCode(block, 'DEGREES', 0) || '0';
-        return `turn_right(${degrees})\n`;
+        return `await turn_right(${degrees})\n`;
     };
 };

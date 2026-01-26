@@ -8,16 +8,17 @@ import Stage from "./Stage";
 import RunnerIframe from "./RunnerIframe";
 import { motion, useDragControls } from "framer-motion";
 import { synth } from "@/lib/audio/SimpleSynth";
+import { BlocklyCodeEvent, BlocklyStageSoundEvent } from "@/types/events";
 
 const BlocklyWorkspace = dynamic(() => import("./BlocklyWorkspace"), { ssr: false });
 
 export default function BlocklyEditor() {
   const [code, setCode] = useState<string>("");
-  const [language, setLanguage] = useState<"js" | "py">("js");
+  const [language, setLanguage] = useState<"js" | "py">("py");
   const [showPanel, setShowPanel] = useState<boolean>(false);
   const [simState, setSimState] = useState<{ w: number; h: number }>({
-    w: 256, // mặc định w-64
-    h: 192, // mặc định h-48
+    w: 256,
+    h: 192,
   });
   const [isMounted, setIsMounted] = useState(false);
   // const dragControls = useDragControls();
@@ -31,8 +32,8 @@ export default function BlocklyEditor() {
     if (container) {
       const rect = container.getBoundingClientRect();
       return {
-        maxWidth: Math.max(160, rect.width - 64), 
-        maxHeight: Math.max(120, rect.height - 112) 
+        maxWidth: Math.max(160, rect.width - 64),
+        maxHeight: Math.max(120, rect.height - 112)
       };
     }
     return { maxWidth: window.innerWidth - 64, maxHeight: window.innerHeight - 112 };
@@ -84,28 +85,31 @@ export default function BlocklyEditor() {
   const getCode = useCallback(() => latestCodeRef.current, []);
 
   useEffect(() => {
-    const onCode = (e: Event) => {
-      const ce = e as CustomEvent<{ code: string }>;
+
+    const onCode = (e: BlocklyCodeEvent) => {
+      const ce = e;
       setCode(ce.detail.code ?? "");
     };
 
-    const onSound = (e: Event) => {
-      const ce = e as CustomEvent<{ action: string; value?: { freq: number; dur: number } }>;
+    const onSound = (e: BlocklyStageSoundEvent) => {
+      const ce = e;
       const { action, value } = ce.detail;
+      console.log("BlocklyEditor: Received sound event", action, value);
       if (action === "beep") synth.beep();
       if (action === "tone" && value) synth.playTone(value.freq, value.dur);
     };
 
     window.addEventListener("blockly:code", onCode);
     window.addEventListener("blockly:stage_sound", onSound);
-    
+
     return () => {
-        window.removeEventListener("blockly:code", onCode);
-        window.removeEventListener("blockly:stage_sound", onSound);
+      window.removeEventListener("blockly:code", onCode);
+      window.removeEventListener("blockly:stage_sound", onSound);
     };
   }, []);
 
   const onRun = useCallback(() => {
+    synth.init();
     if (!showPanel) setShowPanel(true);
     window.dispatchEvent(new CustomEvent("blockly:run"));
   }, [showPanel]);

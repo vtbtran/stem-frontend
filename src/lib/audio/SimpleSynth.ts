@@ -6,7 +6,7 @@ export class SimpleSynth {
     // Lazy init via user interaction usually required, but we'll try to init
   }
 
-  private init() {
+  public init() {
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioCtx) {
@@ -23,7 +23,12 @@ export class SimpleSynth {
 
   playTone(frequency: number, durationSec: number = 0.5, type: OscillatorType = "sine") {
     this.init();
-    if (!this.ctx || !this.masterGain) return;
+    if (!this.ctx || !this.masterGain) {
+      console.error("SimpleSynth: AudioContext not initialized");
+      return;
+    }
+
+    console.log(`SimpleSynth: Playing tone ${frequency}Hz for ${durationSec}s`);
 
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();

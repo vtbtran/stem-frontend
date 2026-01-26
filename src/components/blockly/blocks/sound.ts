@@ -22,7 +22,7 @@ export const defineSoundBlocks = () => {
     };
 
     pythonGenerator.forBlock['sound_beep'] = function (block: Blockly.Block) {
-        return "beep()\n";
+        return "await beep()\n";
     };
 
     // Sound: Play Tone
@@ -51,6 +51,6 @@ export const defineSoundBlocks = () => {
     pythonGenerator.forBlock['sound_tone'] = function (block: Blockly.Block) {
         const freq = block.getFieldValue('FREQ');
         const dur = block.getFieldValue('DURATION');
-        return `tone(${freq}, ${dur})\n`;
+        return `await tone(${freq}, ${dur})\n`;
     };
 };

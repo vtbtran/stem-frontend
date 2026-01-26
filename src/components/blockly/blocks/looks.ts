@@ -30,6 +30,6 @@ export const defineLooksBlocks = () => {
     pythonGenerator.forBlock['looks_say'] = function (block: Blockly.Block) {
         const msg = block.getFieldValue('MESSAGE');
         const secs = block.getFieldValue('SECS');
-        return `say("${msg}", ${secs})\n`;
+        return `await say("${msg}", ${secs})\n`;
     };
 };
