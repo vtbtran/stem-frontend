@@ -67,7 +67,7 @@ export default function RunnerIframe({ getCode, language }: RunnerIframeProps) {
       const iframe = iframeRef.current;
       if (!iframe || !iframe.contentWindow) return;
 
-      console.log("RunnerIframe: Executing code...", { language: languageRef.current, len: codeToRun.length });
+      // console.log("RunnerIframe: Executing code...", { language: languageRef.current, len: codeToRun.length });
 
       // Send message to iframe to execute code logic
       iframe.contentWindow.postMessage({
@@ -94,7 +94,7 @@ export default function RunnerIframe({ getCode, language }: RunnerIframeProps) {
       if (ev.data?.type === "blockly_error") {
         const err = String(ev.data.error);
         if (err.includes("STOP")) {
-          console.log("Chương trình đã dừng bởi người dùng.");
+          // console.log("Chương trình đã dừng bởi người dùng.");
           return;
         }
         window.dispatchEvent(new CustomEvent("blockly:error", { detail: { error: err } }));
@@ -118,6 +118,11 @@ export default function RunnerIframe({ getCode, language }: RunnerIframeProps) {
       }
       if (ev.data?.type === "blockly_look") {
         window.dispatchEvent(new CustomEvent("blockly:stage_look", {
+          detail: ev.data
+        }));
+      }
+      if (ev.data?.type === "blockly_servo") {
+        window.dispatchEvent(new CustomEvent("blockly:stage_servo", {
           detail: ev.data
         }));
       }

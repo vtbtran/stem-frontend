@@ -1,7 +1,12 @@
 export interface RobotCommand {
-    type: "motion" | "sound" | "look";
+    type: "motion" | "sound" | "look" | "servo";
     action: string;
-    value?: number | string | { [key: string]: any };
+    value?: number | string | MotionValue | Record<string, unknown>;
+}
+
+export interface MotionValue {
+    val: number;
+    dur: number;
 }
 
 export interface ITransport {

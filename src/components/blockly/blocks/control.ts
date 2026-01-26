@@ -91,4 +91,35 @@ export const defineControlBlocks = () => {
     (cppGenerator as any).forBlock['control_stop'] = function (block: Blockly.Block) {
         return "return;\n";
     };
+
+    // Command: Wait
+    Blockly.Blocks['control_wait'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField("đợi")
+                .appendField(new Blockly.FieldNumber(1, 0), "DURATION")
+                .appendField("giây");
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour("#4C97FF");
+            this.setTooltip("Dừng chương trình trong khoảng thời gian (giây)");
+            this.setHelpUrl("");
+        }
+    };
+
+    javascriptGenerator.forBlock['control_wait'] = function (block: Blockly.Block) {
+        const duration = block.getFieldValue('DURATION');
+        return `await new Promise(resolve => setTimeout(resolve, ${duration * 1000}));\n`;
+    };
+
+    pythonGenerator.forBlock['control_wait'] = function (block: Blockly.Block) {
+        const duration = block.getFieldValue('DURATION');
+        return `import time\ntime.sleep(${duration})\n`;
+    };
+
+    (cppGenerator as any).forBlock['control_wait'] = function (block: Blockly.Block) {
+        const duration = block.getFieldValue('DURATION');
+        // Arduino style delay takes milliseconds
+        return `delay(${duration * 1000});\n`;
+    };
 };

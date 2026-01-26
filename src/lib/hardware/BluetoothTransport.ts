@@ -21,7 +21,7 @@ export class BluetoothTransport implements ITransport {
 
         try {
             this.device = await navigator.bluetooth.requestDevice({
-                acceptAllDevices: true,
+                filters: [{ services: [UART_SERVICE_UUID] }],
                 optionalServices: [UART_SERVICE_UUID]
             });
 
@@ -41,10 +41,10 @@ export class BluetoothTransport implements ITransport {
 
             this.isConnected = true;
             return true;
-        } catch (err: any) {
+        } catch (err: unknown) {
             // User cancelled the dialog - not a real error
-            if (err?.name === 'NotFoundError') {
-                console.log('Bluetooth: User cancelled device selection');
+            if (typeof err === "object" && err !== null && "name" in err && (err as { name: string }).name === 'NotFoundError') {
+                // console.log('Bluetooth: User cancelled device selection');
                 return false;
             }
 

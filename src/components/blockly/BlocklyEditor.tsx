@@ -12,11 +12,16 @@ import { synth } from "@/lib/audio/SimpleSynth";
 import { BlocklyCodeEvent, BlocklyStageSoundEvent } from "@/types/events";
 
 const BlocklyWorkspace = dynamic(() => import("./BlocklyWorkspace"), { ssr: false });
+import { RobotController } from "@/lib/hardware/RobotController";
+import { RobotCommand } from "@/lib/hardware/types";
+import HardwareInfo from "./HardwareInfo";
+import CameraWindow from "./CameraWindow";
 
 export default function BlocklyEditor() {
   const [code, setCode] = useState<string>("");
   const [language, setLanguage] = useState<"js" | "py" | "cpp">("py");
   const [showPanel, setShowPanel] = useState<boolean>(false);
+  const [showCamera, setShowCamera] = useState<boolean>(false);
   const [simState, setSimState] = useState<{ w: number; h: number }>({
     w: 256,
     h: 192,
@@ -95,17 +100,50 @@ export default function BlocklyEditor() {
     const onSound = (e: BlocklyStageSoundEvent) => {
       const ce = e;
       const { action, value } = ce.detail;
-      console.log("BlocklyEditor: Received sound event", action, value);
-      if (action === "beep") synth.beep();
-      if (action === "tone" && value) synth.playTone(value.freq, value.dur);
+      // console.log("BlocklyEditor: Received sound event", action, value);
+      if (action === "beep") {
+        synth.beep();
+        RobotController.getInstance().sendCommand({ type: "sound", action: "beep" });
+      }
+      if (action === "tone" && value) {
+        synth.playTone(value.freq, value.dur);
+        RobotController.getInstance().sendCommand({ type: "sound", action: "tone", value });
+      }
+    };
+
+    const onMotion = (e: CustomEvent) => {
+      const detail = e.detail;
+      if (detail.type === "MOTION_MOVE") {
+        RobotController.getInstance().sendCommand({ type: "motion", action: "move", value: detail.value });
+      } else if (detail.type === "MOTION_TURN") {
+        RobotController.getInstance().sendCommand({ type: "motion", action: "turn", value: detail.value });
+      }
+    };
+    
+    const onLook = (e: CustomEvent) => {
+        const detail = e.detail;
+        if (detail.action === "on" || detail.action === "off") {
+             RobotController.getInstance().sendCommand({ type: "look", action: detail.action });
+        }
+    };
+
+    const onServo = (e: CustomEvent) => {
+        const detail = e.detail;
+        RobotController.getInstance().sendCommand({ type: "servo", action: "set", value: detail.value });
     };
 
     window.addEventListener("blockly:code", onCode);
     window.addEventListener("blockly:stage_sound", onSound);
+    window.addEventListener("blockly:stage_motion", onMotion as EventListener);
+    window.addEventListener("blockly:stage_look", onLook as EventListener);
+    window.addEventListener("blockly:stage_servo", onServo as EventListener);
 
     return () => {
       window.removeEventListener("blockly:code", onCode);
       window.removeEventListener("blockly:stage_sound", onSound);
+      window.removeEventListener("blockly:stage_motion", onMotion as EventListener);
+      window.removeEventListener("blockly:stage_look", onLook as EventListener);
+      window.removeEventListener("blockly:stage_servo", onServo as EventListener);
     };
   }, []);
 
@@ -128,6 +166,8 @@ export default function BlocklyEditor() {
     <div className="h-full w-full overflow-hidden bg-white relative">
       <div className="h-full w-full transition-all duration-300">
         <RunnerIframe language={language} getCode={getCode} />
+
+        {showCamera && <CameraWindow onClose={() => setShowCamera(false)} />}
 
         {/* STAGE OVERLAY (Draggable with Framer Motion) */}
         <motion.div
@@ -233,6 +273,16 @@ export default function BlocklyEditor() {
                 <span>Workspace</span>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowCamera(!showCamera)}
+                  className={`flex items-center justify-center w-8 h-8 rounded-full transition-colors ${showCamera ? 'bg-red-500 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'}`}
+                  title="Camera"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                  </svg>
+                </button>
+                <HardwareInfo />
                 <HardwareConnect />
                 <button
                   onClick={() => setShowPanel(true)}

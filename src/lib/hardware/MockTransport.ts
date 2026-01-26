@@ -6,7 +6,7 @@ export class MockTransport implements ITransport {
     private simulationInterval: NodeJS.Timeout | null = null;
 
     async connect(): Promise<boolean> {
-        console.log("MockTransport: Simulating connection...");
+        // console.log("MockTransport: Simulating connection...");
         await new Promise(resolve => setTimeout(resolve, 1000));
         this.isConnected = true;
 
@@ -27,11 +27,11 @@ export class MockTransport implements ITransport {
             this.simulationInterval = null;
         }
         this.isConnected = false;
-        console.log("MockTransport: Disconnected");
+        // console.log("MockTransport: Disconnected");
     }
 
     async send(data: string): Promise<void> {
-        console.log("MockTransport: Sending ->", data);
+        // console.log("MockTransport: Sending ->", data);
 
         // Simulate echo response after delay
         setTimeout(() => {

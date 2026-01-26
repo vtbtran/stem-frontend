@@ -28,7 +28,7 @@ export class SimpleSynth {
       return;
     }
 
-    console.log(`SimpleSynth: Playing tone ${frequency}Hz for ${durationSec}s`);
+    // console.log(`SimpleSynth: Playing tone ${frequency}Hz for ${durationSec}s`);
 
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();

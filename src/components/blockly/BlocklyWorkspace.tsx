@@ -5,6 +5,9 @@ import * as Blockly from "blockly";
 import "blockly/blocks";
 import "blockly/javascript";
 import "blockly/python";
+import { JavascriptGenerator } from "blockly/javascript";
+import { PythonGenerator } from "blockly/python";
+import { CppGenerator } from "@/lib/blockly/generators/cpp";
 import { javascriptGenerator, pythonGenerator, cppGenerator } from "@/lib/blockly/generators";
 import { TOOLBOX_XML } from "./toolbox";
 import PromptModal from "../PromptModal";
@@ -12,12 +15,14 @@ import { defineMotionBlocks } from "./blocks/motion";
 import { defineControlBlocks } from "./blocks/control";
 import { defineSoundBlocks } from "./blocks/sound";
 import { defineLooksBlocks } from "./blocks/looks";
+import { defineHardwareBlocks } from "./blocks/hardware";
 
 // Initialize custom blocks
 defineMotionBlocks();
 defineControlBlocks();
 defineSoundBlocks();
 defineLooksBlocks();
+defineHardwareBlocks();
 
 type Props = {
   language: "js" | "py" | "cpp";
@@ -67,7 +72,7 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
     if (!ws) return;
 
     const currentLang = languageRef.current;
-    let generator: any; // Use any to avoid strict type mismatch
+    let generator: JavascriptGenerator | PythonGenerator | CppGenerator; 
     if (currentLang === "py") generator = pythonGenerator;
     else if (currentLang === "cpp") generator = cppGenerator;
     else generator = javascriptGenerator;
@@ -308,7 +313,7 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
           const block = ws.getBlockById(clickEvent.blockId);
           if (block && block.type === 'event_start') {
             const currentLang = languageRef.current;
-            let generator: any;
+            let generator: JavascriptGenerator | PythonGenerator | CppGenerator;
             if (currentLang === "py") generator = pythonGenerator;
             else if (currentLang === "cpp") generator = cppGenerator;
             else generator = javascriptGenerator;
@@ -318,8 +323,8 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
 
             generator.init(ws);
             const code = generator.blockToCode(block) as string;
-            console.log("DEBUG: Clicked block, generated code:", code);
-            console.log("DEBUG: Current language:", currentLang);
+            // console.log("DEBUG: Clicked block, generated code:", code);
+            // console.log("DEBUG: Current language:", currentLang);
             window.dispatchEvent(new CustomEvent("blockly:run_stack", { detail: { code } }));
           }
         }

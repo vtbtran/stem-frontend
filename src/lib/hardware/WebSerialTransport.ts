@@ -21,7 +21,8 @@ export class WebSerialTransport implements ITransport {
             this.isConnected = true;
 
             const textEncoder = new TextEncoderStream();
-            const writableStreamClosed = textEncoder.readable.pipeTo(this.port.writable as any);
+            if (!this.port.writable) throw new Error("Port not writable");
+            const writableStreamClosed = textEncoder.readable.pipeTo(this.port.writable);
             this.writer = textEncoder.writable.getWriter();
 
             this.readLoop();

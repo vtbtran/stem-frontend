@@ -1,6 +1,19 @@
 import * as Blockly from 'blockly';
 
-export const cppGenerator = new Blockly.Generator('CPP');
+export const cppGenerator = new Blockly.Generator('CPP') as CppGenerator;
+
+export interface CppGenerator extends Blockly.Generator {
+    ORDER: typeof Order;
+    init(workspace: Blockly.Workspace): void;
+    finish(code: string): string;
+    scrub_(block: Blockly.Block, code: string, thisOnly?: boolean): string;
+    valueToCode(block: Blockly.Block, name: string, outerOrder: number): string;
+    quote_(string: string): string;
+    prefixLines(text: string, prefix: string): string;
+    statementToCode(block: Blockly.Block, name: string): string;
+    forBlock: { [key: string]: (block: Blockly.Block) => string | [string, number] };
+    nameDB_?: Blockly.Names;
+}
 
 // Order of operation ENUMs
 // https://en.cppreference.com/w/cpp/language/operator_precedence
@@ -35,14 +48,14 @@ const Order = {
 };
 
 // Attach ORDER to generator for reference
-(cppGenerator as any).ORDER = Order;
+cppGenerator.ORDER = Order;
 
 cppGenerator.init = function (workspace: Blockly.Workspace) {
     // Reset
 };
 
 cppGenerator.finish = function (code: string) {
-    const indentedCode = (cppGenerator as any).prefixLines(code, '  ');
+    const indentedCode = cppGenerator.prefixLines(code, '  ');
     return `#include <iostream>\n#include "robot.h"\n\nvoid main() {\n${indentedCode}}\n`;
 };
 
@@ -53,7 +66,7 @@ cppGenerator.scrub_ = function (block: Blockly.Block, code: string, thisOnly?: b
 };
 
 // Implement valueToCode manually to ensure it exists
-(cppGenerator as any).valueToCode = function (block: Blockly.Block, name: string, outerOrder: number) {
+cppGenerator.valueToCode = function (block: Blockly.Block, name: string, outerOrder: number) {
     if (isNaN(outerOrder)) {
         throw new TypeError('Value order must be a number.');
     }
@@ -82,15 +95,15 @@ cppGenerator.scrub_ = function (block: Blockly.Block, code: string, thisOnly?: b
 };
 
 // Required helpers
-(cppGenerator as any).quote_ = function (string: string) {
+cppGenerator.quote_ = function (string: string) {
     return `"${string.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 };
 
-(cppGenerator as any).prefixLines = function (text: string, prefix: string) {
+cppGenerator.prefixLines = function (text: string, prefix: string) {
     return prefix + text.replace(/(?!\n$)\n/g, '\n' + prefix);
 };
 
-(cppGenerator as any).statementToCode = function (block: Blockly.Block, name: string) {
+cppGenerator.statementToCode = function (block: Blockly.Block, name: string) {
     const targetBlock = block.getInputTargetBlock(name);
     let code = this.blockToCode(targetBlock);
     if (Array.isArray(code)) {
@@ -100,33 +113,33 @@ cppGenerator.scrub_ = function (block: Blockly.Block, code: string, thisOnly?: b
     if (!code) {
         return '';
     }
-    return (cppGenerator as any).prefixLines(code, '  ');
+    return cppGenerator.prefixLines(code, '  ');
 };
 
 // --- Basic Code Generators ---
 
 // --- 2. LOGIC & CONTROL BLOCKS ---
 
-(cppGenerator as any).forBlock['controls_if'] = function (block: Blockly.Block) {
+cppGenerator.forBlock['controls_if'] = function (block: Blockly.Block) {
     let n = 0;
     let code = '';
     // If/elseif/else condition.
     do {
-        const conditionCode = (cppGenerator as any).valueToCode(block, 'IF' + n, Order.NONE) || 'false';
-        const branchCode = (cppGenerator as any).statementToCode(block, 'DO' + n);
+        const conditionCode = cppGenerator.valueToCode(block, 'IF' + n, Order.NONE) || 'false';
+        const branchCode = cppGenerator.statementToCode(block, 'DO' + n);
         const header = n > 0 ? ' else if' : 'if';
         code += `${header} (${conditionCode}) {\n${branchCode}}`;
         n++;
     } while (block.getInput('IF' + n));
 
     if (block.getInput('ELSE')) {
-        const branchCode = (cppGenerator as any).statementToCode(block, 'ELSE');
+        const branchCode = cppGenerator.statementToCode(block, 'ELSE');
         code += ` else {\n${branchCode}}`;
     }
     return code + '\n';
 };
 
-(cppGenerator as any).forBlock['logic_compare'] = function (block: Blockly.Block) {
+cppGenerator.forBlock['logic_compare'] = function (block: Blockly.Block) {
     const OPERATORS = {
         'EQ': '==',
         'NEQ': '!=',
@@ -137,37 +150,37 @@ cppGenerator.scrub_ = function (block: Blockly.Block, code: string, thisOnly?: b
     };
     const operator = OPERATORS[block.getFieldValue('OP') as keyof typeof OPERATORS];
     const order = (operator === '==' || operator === '!=') ? Order.EQUALITY : Order.RELATIONAL;
-    const argument0 = (cppGenerator as any).valueToCode(block, 'A', order) || '0';
-    const argument1 = (cppGenerator as any).valueToCode(block, 'B', order) || '0';
+    const argument0 = cppGenerator.valueToCode(block, 'A', order) || '0';
+    const argument1 = cppGenerator.valueToCode(block, 'B', order) || '0';
     const code = argument0 + ' ' + operator + ' ' + argument1;
     return [code, order];
 };
 
-(cppGenerator as any).forBlock['controls_repeat_ext'] = function (block: Blockly.Block) {
+cppGenerator.forBlock['controls_repeat_ext'] = function (block: Blockly.Block) {
     let repeats;
     if (block.getField('TIMES')) {
         repeats = String(Number(block.getFieldValue('TIMES')));
     } else {
-        repeats = (cppGenerator as any).valueToCode(block, 'TIMES', Order.ASSIGNMENT) || '0';
+        repeats = cppGenerator.valueToCode(block, 'TIMES', Order.ASSIGNMENT) || '0';
     }
-    const branch = (cppGenerator as any).statementToCode(block, 'DO');
-    const loopVar = (cppGenerator as any).nameDB_ ? (cppGenerator as any).nameDB_.getDistinctName('i', Blockly.Names.NameType.VARIABLE) : 'i';
+    const branch = cppGenerator.statementToCode(block, 'DO');
+    const loopVar = cppGenerator.nameDB_ ? cppGenerator.nameDB_.getDistinctName('i', Blockly.Names.NameType.VARIABLE) : 'i';
     const code = `for (int ${loopVar} = 0; ${loopVar} < ${repeats}; ${loopVar}++) {\n${branch}}\n`;
     return code;
 };
 
 // Logic Boolean
-(cppGenerator as any).forBlock['logic_boolean'] = function (block: Blockly.Block) {
+cppGenerator.forBlock['logic_boolean'] = function (block: Blockly.Block) {
     const code = block.getFieldValue('BOOL') === 'TRUE' ? 'true' : 'false';
     return [code, Order.ATOMIC];
 };
 
 // Logic Operation
-(cppGenerator as any).forBlock['logic_operation'] = function (block: Blockly.Block) {
+cppGenerator.forBlock['logic_operation'] = function (block: Blockly.Block) {
     const operator = block.getFieldValue('OP') === 'AND' ? '&&' : '||';
     const order = operator === '&&' ? Order.LOGICAL_AND : Order.LOGICAL_OR;
-    const argument0 = (cppGenerator as any).valueToCode(block, 'A', order);
-    const argument1 = (cppGenerator as any).valueToCode(block, 'B', order);
+    const argument0 = cppGenerator.valueToCode(block, 'A', order);
+    const argument1 = cppGenerator.valueToCode(block, 'B', order);
     if (!argument0 || !argument1) {
         return ['', Order.ATOMIC];
     }
@@ -176,20 +189,20 @@ cppGenerator.scrub_ = function (block: Blockly.Block, code: string, thisOnly?: b
 };
 
 // Logic Negate
-(cppGenerator as any).forBlock['logic_negate'] = function (block: Blockly.Block) {
-    const argument0 = (cppGenerator as any).valueToCode(block, 'BOOL', Order.LOGICAL_NOT) || 'true';
+cppGenerator.forBlock['logic_negate'] = function (block: Blockly.Block) {
+    const argument0 = cppGenerator.valueToCode(block, 'BOOL', Order.LOGICAL_NOT) || 'true';
     const code = '!' + argument0;
     return [code, Order.LOGICAL_NOT];
 };
 
 // --- 3. MATH BLOCKS ---
 
-(cppGenerator as any).forBlock['math_number'] = function (block: Blockly.Block) {
+cppGenerator.forBlock['math_number'] = function (block: Blockly.Block) {
     const code = Number(block.getFieldValue('NUM'));
     return [String(code), Order.ATOMIC];
 };
 
-(cppGenerator as any).forBlock['math_arithmetic'] = function (block: Blockly.Block) {
+cppGenerator.forBlock['math_arithmetic'] = function (block: Blockly.Block) {
     const OPERATORS = {
         'ADD': [' + ', Order.ADDITION],
         'MINUS': [' - ', Order.SUBTRACTION],
@@ -203,22 +216,22 @@ cppGenerator.scrub_ = function (block: Blockly.Block, code: string, thisOnly?: b
 
     if (!operator) {
         // Power case: pow(a, b)
-        const argument0 = (cppGenerator as any).valueToCode(block, 'A', Order.NONE) || '0';
-        const argument1 = (cppGenerator as any).valueToCode(block, 'B', Order.NONE) || '0';
+        const argument0 = cppGenerator.valueToCode(block, 'A', Order.NONE) || '0';
+        const argument1 = cppGenerator.valueToCode(block, 'B', Order.NONE) || '0';
         return [`pow(${argument0}, ${argument1})`, Order.FUNCTION_CALL];
     }
-    const argument0 = (cppGenerator as any).valueToCode(block, 'A', order) || '0';
-    const argument1 = (cppGenerator as any).valueToCode(block, 'B', order) || '0';
+    const argument0 = cppGenerator.valueToCode(block, 'A', order) || '0';
+    const argument1 = cppGenerator.valueToCode(block, 'B', order) || '0';
     const code = argument0 + operator + argument1;
     return [code, order];
 };
 
-(cppGenerator as any).forBlock['math_single'] = function (block: Blockly.Block) {
+cppGenerator.forBlock['math_single'] = function (block: Blockly.Block) {
     const operator = block.getFieldValue('OP');
     let code;
     let arg;
     if (operator === 'NEG') {
-        arg = (cppGenerator as any).valueToCode(block, 'NUM', Order.UNARY_NEGATION) || '0';
+        arg = cppGenerator.valueToCode(block, 'NUM', Order.UNARY_NEGATION) || '0';
         if (arg[0] === '-') {
             arg = ' ' + arg;
         }
@@ -236,7 +249,7 @@ cppGenerator.scrub_ = function (block: Blockly.Block, code: string, thisOnly?: b
     // @ts-ignore
     const func = TRANSFORMS[operator];
     if (func) {
-        arg = (cppGenerator as any).valueToCode(block, 'NUM', Order.NONE) || '0';
+        arg = cppGenerator.valueToCode(block, 'NUM', Order.NONE) || '0';
         code = `${func}(${arg})`;
         return [code, Order.FUNCTION_CALL];
     }
@@ -245,27 +258,27 @@ cppGenerator.scrub_ = function (block: Blockly.Block, code: string, thisOnly?: b
 
 // --- 4. VARIABLES ---
 
-(cppGenerator as any).forBlock['variables_get'] = function (block: Blockly.Block) {
-    const code = (cppGenerator as any).nameDB_
-        ? (cppGenerator as any).nameDB_.getName(block.getFieldValue('VAR'), Blockly.Names.NameType.VARIABLE)
+cppGenerator.forBlock['variables_get'] = function (block: Blockly.Block) {
+    const code = cppGenerator.nameDB_
+        ? cppGenerator.nameDB_.getName(block.getFieldValue('VAR'), Blockly.Names.NameType.VARIABLE)
         : block.getFieldValue('VAR');
     return [code, Order.ATOMIC];
 };
 
-(cppGenerator as any).forBlock['variables_set'] = function (block: Blockly.Block) {
-    const argument0 = (cppGenerator as any).valueToCode(block, 'VALUE', Order.ASSIGNMENT) || '0';
-    const varName = (cppGenerator as any).nameDB_
-        ? (cppGenerator as any).nameDB_.getName(block.getFieldValue('VAR'), Blockly.Names.NameType.VARIABLE)
+cppGenerator.forBlock['variables_set'] = function (block: Blockly.Block) {
+    const argument0 = cppGenerator.valueToCode(block, 'VALUE', Order.ASSIGNMENT) || '0';
+    const varName = cppGenerator.nameDB_
+        ? cppGenerator.nameDB_.getName(block.getFieldValue('VAR'), Blockly.Names.NameType.VARIABLE)
         : block.getFieldValue('VAR');
     return `${varName} = ${argument0};\n`;
 };
 
 // --- 5. LOOPS & FLOW ---
 
-(cppGenerator as any).forBlock['controls_whileUntil'] = function (block: Blockly.Block) {
+cppGenerator.forBlock['controls_whileUntil'] = function (block: Blockly.Block) {
     const until = block.getFieldValue('MODE') === 'UNTIL';
-    let argument0 = (cppGenerator as any).valueToCode(block, 'BOOL', until ? Order.LOGICAL_NOT : Order.NONE) || 'false';
-    let branch = (cppGenerator as any).statementToCode(block, 'DO');
+    let argument0 = cppGenerator.valueToCode(block, 'BOOL', until ? Order.LOGICAL_NOT : Order.NONE) || 'false';
+    let branch = cppGenerator.statementToCode(block, 'DO');
 
     if (until) {
         argument0 = '!' + argument0;
@@ -273,7 +286,7 @@ cppGenerator.scrub_ = function (block: Blockly.Block, code: string, thisOnly?: b
     return `while (${argument0}) {\n${branch}}\n`;
 };
 
-(cppGenerator as any).forBlock['controls_flow_statements'] = function (block: Blockly.Block) {
+cppGenerator.forBlock['controls_flow_statements'] = function (block: Blockly.Block) {
     switch (block.getFieldValue('FLOW')) {
         case 'BREAK':
             return 'break;\n';
@@ -284,7 +297,7 @@ cppGenerator.scrub_ = function (block: Blockly.Block, code: string, thisOnly?: b
 };
 
 // Text string
-(cppGenerator as any).forBlock['text'] = function (block: Blockly.Block) {
-    const code = (cppGenerator as any).quote_(block.getFieldValue('TEXT'));
+cppGenerator.forBlock['text'] = function (block: Blockly.Block) {
+    const code = cppGenerator.quote_(block.getFieldValue('TEXT'));
     return [code, Order.ATOMIC];
 };

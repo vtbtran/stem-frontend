@@ -3,7 +3,7 @@ export const COMMON_SCRIPT = `
   const oldLog = console.log;
   console.log = (...args) => {
     parent.postMessage({ type: "blockly_log", args }, "*");
-    oldLog(...args);
+    // oldLog(...args);
   };
 
   window.alert = (...args) => {
@@ -16,6 +16,9 @@ export const COMMON_SCRIPT = `
   };
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  window.delay = async (ms) => {
+      await sleep(ms);
+  };
 
   // Motion Helpers
   window.moveForward = async (s) => {
@@ -68,5 +71,17 @@ export const COMMON_SCRIPT = `
      console.log(\`💬 Nói: "\${text}"\`);
      parent.postMessage({ type: "blockly_look", action: "say", value: { text: String(text), duration: Number(duration) } }, "*");
      await sleep(Number(duration) * 1000);
+  };
+  
+  window.led = async (state) => {
+     console.log(\`💡 Đèn \${state}\`);
+     parent.postMessage({ type: "blockly_look", action: state }, "*");
+     await sleep(100);
+  };
+
+  window.servo = async (angle) => {
+     console.log(\`📐 Servo góc \${angle}\`);
+     parent.postMessage({ type: "blockly_servo", value: Number(angle) }, "*");
+     await sleep(100);
   };
 `;

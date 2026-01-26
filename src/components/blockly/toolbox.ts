@@ -4,6 +4,8 @@ export const TOOLBOX_XML = `
     <block type="event_start"></block>
     <block type="control_forever"></block>
     <block type="control_stop"></block>
+    <block type="control_stop"></block>
+    <block type="control_wait"></block>
     <sep gap="32"></sep>
     <block type="motion_move_forward">
       <value name="STEPS">
@@ -35,6 +37,10 @@ export const TOOLBOX_XML = `
         </shadow>
       </value>
     </block>
+  </category>
+  <category name="Phần cứng" colour="#FF9900">
+    <block type="hardware_led"></block>
+    <block type="hardware_servo"></block>
   </category>
   <category name="Thoại" colour="#9966FF">
     <block type="looks_say"></block>

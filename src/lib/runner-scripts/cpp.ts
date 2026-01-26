@@ -14,15 +14,15 @@ export const CPP_SCRIPT = `
      const mainFuncStartRegex = new RegExp("(void|int)[\\\\s\\\\n]+main[\\\\s\\\\n]*\\\\([\\\\s\\\\S]*?\\\\)[\\\\s\\\\n]*\\\\{");
      
      if (mainFuncStartRegex.test(jsCode)) {
-        console.log("RunnerIframe: Detected main function, stripping wrapper.");
+        // console.log("RunnerIframe: Detected main function, stripping wrapper.");
         jsCode = jsCode.replace(mainFuncStartRegex, '');
         // Remove the last '}' (assuming it matches the main function)
         jsCode = jsCode.replace(/\\}\\s*$/, '');
      } else {
-        console.log("RunnerIframe: No main function detected.");
+        // console.log("RunnerIframe: No main function detected.");
      }
 
-     console.log("RunnerIframe: Transpiled JS Code:", jsCode);
+     // console.log("RunnerIframe: Transpiled JS Code:", jsCode);
 
      // 3. Handle Variable Declarations & Loop Initializers
      // Replace 'int ', 'float ', etc. with 'let ' ONLY when they look like declarations
@@ -34,7 +34,9 @@ export const CPP_SCRIPT = `
      // 2. Async-ify the known blocking function calls
      const functions = [
        'moveForward', 'moveBackward', 'turnLeft', 'turnRight', 
-       'beep', 'tone', 'moveForwardTime', 'moveBackwardTime', 'say'
+       'beep', 'tone', 'moveForwardTime', 'moveBackwardTime', 'say',
+       'beep', 'tone', 'moveForwardTime', 'moveBackwardTime', 'say',
+       'led', 'servo', 'delay'
      ];
      
      functions.forEach(fn => {
