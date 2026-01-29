@@ -36,8 +36,9 @@ export const Toolbox: React.FC<ToolboxProps> = ({ workspace, className, activeCa
         const toolbox = workspace.getToolbox() as Blockly.Toolbox;
         if (toolbox && toolbox.getToolboxItems) {
             const item = toolbox.getToolboxItems().find((i) => {
-                // Check if 'getName' exists on the item (it might be ICollapsibleToolboxItem or similar)
-                return 'getName' in i && typeof (i as any).getName === 'function' && (i as any).getName() === category.name;
+                // Check if 'getName' exists and is callable on this item
+                const itemWithName = i as Blockly.IToolboxItem & { getName?: () => string };
+                return typeof itemWithName.getName === 'function' && itemWithName.getName() === category.name;
             });
             if (item) {
                 toolbox.setSelectedItem(item);

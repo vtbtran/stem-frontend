@@ -14,12 +14,12 @@ import { javascriptGenerator, pythonGenerator, cppGenerator } from "@/lib/blockl
 import { TOOLBOX_CONFIG, CustomCategory } from "./toolboxConfig";
 import { Toolbox } from "./Toolbox";
 import { OnyxTheme } from "./BlocklyTheme";
-import PromptModal from "../PromptModal";
-import { defineMotionBlocks } from "./blocks/motion";
-import { defineControlBlocks } from "./blocks/control";
-import { defineSoundBlocks } from "./blocks/sound";
-import { defineLooksBlocks } from "./blocks/looks";
-import { defineHardwareBlocks } from "./blocks/hardware";
+import PromptModal from "../../PromptModal";
+import { defineMotionBlocks } from "../blocks/motion";
+import { defineControlBlocks } from "../blocks/control";
+import { defineSoundBlocks } from "../blocks/sound";
+import { defineLooksBlocks } from "../blocks/looks";
+import { defineHardwareBlocks } from "../blocks/hardware";
 
 // Initialize custom blocks
 defineMotionBlocks();

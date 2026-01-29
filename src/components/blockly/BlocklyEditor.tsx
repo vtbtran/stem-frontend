@@ -2,18 +2,15 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState, useRef } from "react";
-import CodePanel from "./CodePanel";
-import Terminal from "./Terminal";
-import Stage from "./Stage";
-import RunnerIframe from "./RunnerIframe";
-import HardwareConnect from "./HardwareConnect";
+import { CodePanel, RightPanel } from "./editor";
+import { Stage, RunnerIframe } from "./simulation";
+import { HardwareConnect, CameraWindow } from "./hardware";
 import { motion } from "framer-motion";
 import { synth } from "@/lib/audio/SimpleSynth";
 import { BlocklyCodeEvent, BlocklyStageSoundEvent } from "@/types/events";
 
-const BlocklyWorkspace = dynamic(() => import("./BlocklyWorkspace"), { ssr: false });
+const BlocklyWorkspace = dynamic(() => import("./workspace/BlocklyWorkspace"), { ssr: false });
 import { RobotController } from "@/lib/hardware/RobotController";
-import CameraWindow from "./CameraWindow";
 
 export default function BlocklyEditor() {
   const [code, setCode] = useState<string>("");
@@ -26,7 +23,8 @@ export default function BlocklyEditor() {
   });
   const [isMounted, setIsMounted] = useState(false);
   const [isStageMinimized, setIsStageMinimized] = useState(false);
-  // const dragControls = useDragControls();
+  const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
+  const [rightPanelTab, setRightPanelTab] = useState<"terminal" | "ai">("terminal");
   const simElementRef = useRef<HTMLDivElement>(null);
   const activeAreaRef = useRef<HTMLDivElement>(null);
 
@@ -133,11 +131,27 @@ export default function BlocklyEditor() {
       RobotController.getInstance().sendCommand({ type: "servo", action: "set", value: detail.value });
     };
 
+    // Capture terminal logs for AI context
+    const onTerminalLog = (e: Event) => {
+      const ce = e as CustomEvent<{ args: unknown[] }>;
+      const message = ce.detail.args.map(arg =>
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(" ");
+      setTerminalLogs(prev => [...prev.slice(-50), message]); // Keep last 50 logs
+    };
+
+    const onTerminalError = (e: Event) => {
+      const ce = e as CustomEvent<{ error: string }>;
+      setTerminalLogs(prev => [...prev.slice(-50), `[ERROR] ${ce.detail.error}`]);
+    };
+
     window.addEventListener("blockly:code", onCode);
     window.addEventListener("blockly:stage_sound", onSound);
     window.addEventListener("blockly:stage_motion", onMotion as EventListener);
     window.addEventListener("blockly:stage_look", onLook as EventListener);
     window.addEventListener("blockly:stage_servo", onServo as EventListener);
+    window.addEventListener("blockly:log", onTerminalLog);
+    window.addEventListener("blockly:error", onTerminalError);
 
     return () => {
       window.removeEventListener("blockly:code", onCode);
@@ -145,6 +159,8 @@ export default function BlocklyEditor() {
       window.removeEventListener("blockly:stage_motion", onMotion as EventListener);
       window.removeEventListener("blockly:stage_look", onLook as EventListener);
       window.removeEventListener("blockly:stage_servo", onServo as EventListener);
+      window.removeEventListener("blockly:log", onTerminalLog);
+      window.removeEventListener("blockly:error", onTerminalError);
     };
   }, []);
 
@@ -365,6 +381,18 @@ export default function BlocklyEditor() {
                 </button>
               )}
 
+              {/* AI BUTTON */}
+              <button
+                onClick={() => setRightPanelTab("ai")}
+                className={`h-10 px-4 rounded-xl text-xs font-bold uppercase tracking-wider active:scale-[0.98] transition-all flex items-center gap-2 ${rightPanelTab === "ai"
+                    ? "bg-blue-600/20 text-blue-400 ring-1 ring-blue-500/50"
+                    : "bg-transparent border border-slate-600 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                  }`}
+              >
+                <span>🤖</span>
+                <span>AI</span>
+              </button>
+
               {/* RUN BUTTON */}
               <button
                 onClick={onRun}
@@ -385,9 +413,17 @@ export default function BlocklyEditor() {
               <CodePanel code={code} onChange={setCode} />
             </div>
 
-            {/* TERMINAL CARD (30%) */}
+            {/* RIGHT PANEL (30%) - Terminal + AI */}
             <div className="flex-[3] bg-[#0F172A] rounded-2xl border border-slate-800/60 shadow-xl overflow-hidden flex flex-col ring-1 ring-white/5">
-              <Terminal />
+              <RightPanel
+                code={code}
+                language={language}
+                terminalLogs={terminalLogs}
+                activeTab={rightPanelTab}
+                onTabChange={setRightPanelTab}
+                onApplyCode={(newCode) => setCode(newCode)}
+                onInsertCode={(insertCode) => setCode(prev => prev + "\n" + insertCode)}
+              />
             </div>
           </div>
         </div>
