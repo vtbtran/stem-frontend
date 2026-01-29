@@ -64,22 +64,52 @@ cppGenerator.finish = function (code: string) {
     const workspace = (cppGenerator as any).workspace_ as Blockly.Workspace;
     if (!workspace) return code; // Fallback
 
-    const topBlocks = workspace.getTopBlocks(true); // true = ordered by position? usually doesn't matter much for this
+    const topBlocks = workspace.getTopBlocks(true);
 
     let setupCode = '';
     let loopCode = '';
 
+    // Helper function to extract code from a block chain, stopping at control_forever
+    // Returns { setupCode, loopCode } where loopCode is content inside any control_forever
+    const extractCodeFromChain = (block: Blockly.Block | null): { setup: string; loop: string } => {
+        let setup = '';
+        let loop = '';
+        let currentBlock = block;
+
+        while (currentBlock) {
+            if (currentBlock.type === 'control_forever') {
+                // This is a forever loop - its content goes to loop()
+                const branch = cppGenerator.statementToCode(currentBlock, 'DO');
+                loop += branch;
+                // control_forever has no next statement (it's a forever loop)
+                // but we should stop processing this chain
+                break;
+            } else {
+                // Regular block - generate code for setup
+                const blockCode = cppGenerator.forBlock[currentBlock.type]?.(currentBlock);
+                if (typeof blockCode === 'string') {
+                    setup += blockCode;
+                } else if (Array.isArray(blockCode)) {
+                    setup += blockCode[0];
+                }
+            }
+            // Move to next block in chain
+            currentBlock = currentBlock.nextConnection?.targetBlock() ?? null;
+        }
+
+        return { setup, loop };
+    };
+
     for (const block of topBlocks) {
         if (block.type === 'event_start') {
             // This is a Setup block.
-            // blockToCode on the start block returns the code of connected blocks (via scrub_)
-            const blockCode = cppGenerator.blockToCode(block);
-            if (typeof blockCode === 'string') {
-                setupCode += blockCode;
-            }
+            // Get the first connected block and extract code
+            const nextBlock = block.nextConnection?.targetBlock() ?? null;
+            const extracted = extractCodeFromChain(nextBlock);
+            setupCode += extracted.setup;
+            loopCode += extracted.loop;
         } else if (block.type === 'control_forever') {
-            // This is a Loop block (Top Level).
-            // We want the CONTENT inside the loop, not the 'while(true)' wrapper.
+            // Top-level Loop block - content goes directly to loop()
             const branch = cppGenerator.statementToCode(block, 'DO');
             loopCode += branch;
         }
