@@ -11,7 +11,7 @@ import { JavascriptGenerator } from "blockly/javascript";
 import { PythonGenerator } from "blockly/python";
 import { CppGenerator } from "@/lib/blockly/generators/cpp";
 import { javascriptGenerator, pythonGenerator, cppGenerator } from "@/lib/blockly/generators";
-import { TOOLBOX_CONFIG, CustomCategory } from "./toolbox";
+import { TOOLBOX_CONFIG, CustomCategory } from "./toolboxConfig";
 import { Toolbox } from "./Toolbox";
 import { OnyxTheme } from "./BlocklyTheme";
 import PromptModal from "../PromptModal";
@@ -235,7 +235,7 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
       document.head.appendChild(styleTag);
     }
 
-    const categories = TOOLBOX_CONFIG.contents.filter((c: any) => c.kind === 'category' && c.imageUrl) as CustomCategory[];
+    const categories = TOOLBOX_CONFIG.contents.filter((c): c is CustomCategory => c.kind === 'category' && 'imageUrl' in c) as CustomCategory[];
     const cssRules = categories.map(c => `
       .blocklyTreeIcon.${c.cssConfig?.icon} { 
         display: inline-block !important;
@@ -405,13 +405,24 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
           <button
             type="button"
             onClick={zoomReset}
-            className="h-11 w-11 rounded-2xl bg-violet-50 text-violet-600 border border-violet-200
-            shadow-[0_10px_25px_rgba(124,58,237,0.15)]
-            hover:bg-violet-100 hover:shadow-[0_14px_30px_rgba(124,58,237,0.2)]
-            active:scale-[0.98] transition grid place-items-center"
+            className="h-10 w-10 rounded-xl bg-white text-slate-600 border border-slate-200
+            shadow-sm hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200
+            active:scale-[0.98] transition grid place-items-center group"
             title="Reset"
           >
-            <Image src="/icons/position.png" alt="Reset" width={24} height={24} className="object-contain" />
+            <div
+              className="w-5 h-5 bg-current transition-colors"
+              style={{
+                maskImage: 'url("/icons/position.png")',
+                maskSize: 'contain',
+                maskRepeat: 'no-repeat',
+                maskPosition: 'center',
+                WebkitMaskImage: 'url("/icons/position.png")',
+                WebkitMaskSize: 'contain',
+                WebkitMaskRepeat: 'no-repeat',
+                WebkitMaskPosition: 'center'
+              }}
+            />
           </button>
 
 
@@ -419,26 +430,48 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
           <button
             type="button"
             onClick={zoomIn}
-            className="h-11 w-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200
-               shadow-[0_10px_25px_rgba(5,150,105,0.15)]
-               hover:bg-emerald-100 hover:shadow-[0_14px_30px_rgba(5,150,105,0.2)]
-               active:scale-[0.98] transition grid place-items-center"
+            className="h-10 w-10 rounded-xl bg-white text-slate-600 border border-slate-200
+             shadow-sm hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200
+             active:scale-[0.98] transition grid place-items-center group"
             title="Zoom in"
           >
-            <Image src="/icons/zoom-in.png" alt="Zoom In" width={24} height={24} className="object-contain" />
+            <div
+              className="w-5 h-5 bg-current transition-colors"
+              style={{
+                maskImage: 'url("/icons/zoom-in.png")',
+                maskSize: 'contain',
+                maskRepeat: 'no-repeat',
+                maskPosition: 'center',
+                WebkitMaskImage: 'url("/icons/zoom-in.png")',
+                WebkitMaskSize: 'contain',
+                WebkitMaskRepeat: 'no-repeat',
+                WebkitMaskPosition: 'center'
+              }}
+            />
           </button>
 
           {/* Zoom out */}
           <button
             type="button"
             onClick={zoomOut}
-            className="h-11 w-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200
-               shadow-[0_10px_25px_rgba(217,119,6,0.15)]
-               hover:bg-amber-100 hover:shadow-[0_14px_30px_rgba(217,119,6,0.2)]
-               active:scale-[0.98] transition grid place-items-center"
+            className="h-10 w-10 rounded-xl bg-white text-slate-600 border border-slate-200
+             shadow-sm hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200
+             active:scale-[0.98] transition grid place-items-center group"
             title="Zoom out"
           >
-            <Image src="/icons/magnifying-glass.png" alt="Zoom Out" width={24} height={24} className="object-contain" />
+            <div
+              className="w-5 h-5 bg-current transition-colors"
+              style={{
+                maskImage: 'url("/icons/magnifying-glass.png")',
+                maskSize: 'contain',
+                maskRepeat: 'no-repeat',
+                maskPosition: 'center',
+                WebkitMaskImage: 'url("/icons/magnifying-glass.png")',
+                WebkitMaskSize: 'contain',
+                WebkitMaskRepeat: 'no-repeat',
+                WebkitMaskPosition: 'center'
+              }}
+            />
           </button>
 
         </div>

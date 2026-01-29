@@ -25,6 +25,7 @@ export default function BlocklyEditor() {
     h: 192,
   });
   const [isMounted, setIsMounted] = useState(false);
+  const [isStageMinimized, setIsStageMinimized] = useState(false);
   // const dragControls = useDragControls();
   const simElementRef = useRef<HTMLDivElement>(null);
   const activeAreaRef = useRef<HTMLDivElement>(null);
@@ -175,79 +176,48 @@ export default function BlocklyEditor() {
 
         {showCamera && <CameraWindow onClose={() => setShowCamera(false)} />}
 
-        {/* STAGE OVERLAY (Draggable) */}
-        <motion.div
-          className="absolute z-50 rounded-2xl shadow-2xl ring-1 ring-white/10 overflow-hidden bg-zinc-900/95 backdrop-blur-md group"
-          initial={false}
-          style={{
-            right: '32px',
-            top: '88px', // Lowered slightly
-            width: `${simState.w}px`,
-            height: `${simState.h}px`,
-            opacity: isMounted && !showPanel ? 1 : 0,
-            pointerEvents: isMounted && !showPanel ? "auto" : "none",
-            minWidth: '200px',
-            minHeight: '160px',
-          }}
+        {/* STAGE DOCK (Fixed Top-Right) */}
+        <div
           ref={simElementRef}
+          className={`absolute z-40 rounded-xl shadow-2xl ring-1 ring-zinc-900/10 overflow-hidden bg-zinc-900 transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1)
+            ${isMounted && !showPanel ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8 pointer-events-none'}
+          `}
+          style={{
+            top: '80px',
+            right: '16px',
+            width: isStageMinimized ? '180px' : '320px',
+            height: isStageMinimized ? '36px' : '240px',
+          }}
         >
-          {/* ... Resize Handles ... */}
-          {/* Bottom Right */}
+          {/* Header */}
           <div
-            className="absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize z-20 group/handle"
-            onPointerDown={(e) => {
-              const startX = e.clientX; const startY = e.clientY; const startW = simState.w; const startH = simState.h;
-              const { maxWidth, maxHeight } = getSimBoundaries();
-              const onPointerMove = (moveEvent: PointerEvent) => {
-                setSimState({
-                  w: Math.min(maxWidth, Math.max(160, startW + (moveEvent.clientX - startX))),
-                  h: Math.min(maxHeight, Math.max(120, startH + (moveEvent.clientY - startY)))
-                });
-              };
-              const onPointerUp = () => { window.removeEventListener('pointermove', onPointerMove); window.removeEventListener('pointerup', onPointerUp); saveSimSize(); };
-              window.addEventListener('pointermove', onPointerMove); window.addEventListener('pointerup', onPointerUp);
-            }}
-          >
-            <div className="absolute bottom-1.5 right-1.5 w-2 h-2 rounded-full bg-white/20 group-hover/handle:bg-emerald-400 transition-colors" />
-          </div>
-
-          {/* Bottom Left */}
-          <div
-            className="absolute bottom-0 left-0 w-6 h-6 cursor-nesw-resize z-20 group/handle"
-            onPointerDown={(e) => {
-              const startX = e.clientX; const startY = e.clientY; const startW = simState.w; const startH = simState.h;
-              const { maxWidth, maxHeight } = getSimBoundaries();
-              const onPointerMove = (moveEvent: PointerEvent) => {
-                setSimState({
-                  w: Math.min(maxWidth, Math.max(160, startW - (moveEvent.clientX - startX))),
-                  h: Math.min(maxHeight, Math.max(120, startH + (moveEvent.clientY - startY)))
-                });
-              };
-              const onPointerUp = () => { window.removeEventListener('pointermove', onPointerMove); window.removeEventListener('pointerup', onPointerUp); saveSimSize(); };
-              window.addEventListener('pointermove', onPointerMove); window.addEventListener('pointerup', onPointerUp);
-            }}
-          >
-            <div className="absolute bottom-1.5 left-1.5 w-2 h-2 rounded-full bg-white/20 group-hover/handle:bg-emerald-400 transition-colors" />
-          </div>
-
-          {/* Draggable Header */}
-          <div
-            className="absolute top-0 left-0 right-0 h-9 bg-white/5 border-b border-white/5 flex items-center justify-between px-3 text-[10px] font-bold text-zinc-400 uppercase tracking-widest z-10 select-none cursor-grab active:cursor-grabbing"
+            className="h-9 bg-white/5 border-b border-white/5 flex items-center justify-between px-3 select-none cursor-pointer hover:bg-white/10 transition-colors"
+            onClick={() => setIsStageMinimized(!isStageMinimized)}
+            title={isStageMinimized ? "Click to expand" : "Click to minimize"}
           >
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-              <span>Rotbot Live</span>
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Robot Live</span>
             </div>
-            <div className="flex gap-1.5 text-zinc-600">
-              <div className="w-1 h-1 rounded-full bg-current" />
-              <div className="w-1 h-1 rounded-full bg-current" />
-              <div className="w-1 h-1 rounded-full bg-current" />
+            <div className="flex gap-1 opacity-50">
+              {isStageMinimized ? (
+                <svg className="w-3 h-3 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+              ) : (
+                <div className="flex gap-1">
+                  <div className="w-1 h-1 rounded-full bg-zinc-600" />
+                  <div className="w-1 h-1 rounded-full bg-zinc-600" />
+                </div>
+              )}
             </div>
           </div>
-          <div className="w-full h-full pt-9 pb-1 bg-zinc-900/50">
+
+          <div className={`w-full bg-black relative transition-all duration-300 ${isStageMinimized ? 'opacity-0 h-0' : 'opacity-100 h-[calc(100%-36px)]'}`}>
             <Stage />
           </div>
-        </motion.div>
+        </div>
 
         <div className={`flex-1 w-full ${showPanel ? "hidden" : "flex flex-col"} animate-in fade-in duration-300 relative`}>
           {/* DESIGN MODE HEADER */}
@@ -277,12 +247,13 @@ export default function BlocklyEditor() {
 
               <div className="h-4 w-[1px] bg-zinc-200 mx-1" />
 
+
               <button
                 onClick={() => setShowPanel(true)}
-                className="h-9 pl-3 pr-4 rounded-lg bg-zinc-900 text-white font-medium text-sm flex items-center gap-2 hover:bg-zinc-800 hover:shadow-lg hover:shadow-zinc-900/20 active:scale-[0.98] transition-all duration-200 group"
+                className="h-9 pl-3 pr-4 rounded-lg bg-white text-zinc-600 font-bold text-sm flex items-center gap-2 border border-zinc-200 shadow-sm hover:bg-zinc-50 hover:text-zinc-900 hover:border-zinc-300 active:scale-[0.98] transition-all duration-200 group"
               >
                 <span>Code</span>
-                <svg className="w-4 h-4 text-zinc-400 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-4 h-4 text-zinc-400 group-hover:text-zinc-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                 </svg>
               </button>
@@ -300,37 +271,55 @@ export default function BlocklyEditor() {
           </div>
         </div>
 
-        <div className={`flex flex-col h-full w-full bg-[#0d0d0d] transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${!showPanel ? "translate-x-full absolute inset-0 pointer-events-none" : "translate-x-0 relative"}`}>
-          {/* CODE MODE */}
-          <div className="h-14 flex items-center justify-between px-6 border-b border-white/5 bg-[#0d0d0d] shrink-0">
+        <div className={`flex flex-col h-full w-full bg-[#0B0F14] transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${!showPanel ? "translate-x-full absolute inset-0 pointer-events-none" : "translate-x-0 relative"}`}>
+          {/* CODE MODE HEADER */}
+          <div className="h-16 flex items-center justify-between px-6 bg-[#111827] border-b border-slate-800 shrink-0 shadow-sm z-20">
+            {/* LEFT: Back + Title */}
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setShowPanel(false)}
-                className="h-8 px-3 rounded-lg bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white text-xs font-semibold uppercase tracking-wider flex items-center gap-2 transition-all"
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#0F172A] text-slate-400 hover:text-white hover:bg-slate-700 border border-slate-700/50 transition-all"
+                title="Back to Block Editor"
               >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                Editor
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
               </button>
-              <div className="px-2 py-0.5 rounded border border-white/10 text-[10px] font-mono text-zinc-500">
-                SOURCE VIEW
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-slate-100 leading-tight">Code Editor</span>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Ready</span>
+                </div>
               </div>
             </div>
 
+            {/* CENTER: Tab Control */}
+            <div className="flex bg-[#0F172A] p-1 rounded-xl border border-slate-800/80 shadow-inner">
+              <button className="px-4 py-1.5 text-xs font-bold rounded-lg bg-[#1F2937] text-slate-200 shadow-sm ring-1 ring-white/5 transition-all">
+                Editor
+              </button>
+              <button className="px-4 py-1.5 text-xs font-bold rounded-lg text-slate-500 hover:text-slate-300 transition-all">
+                Source View
+              </button>
+            </div>
+
+            {/* RIGHT: Actions */}
             <div className="flex items-center gap-3">
-              <div className="flex bg-white/5 p-1 rounded-lg">
+              {/* Language Selector */}
+              <div className="flex bg-[#0F172A] p-1 rounded-lg border border-slate-800/80">
                 {(['js', 'py', 'cpp'] as const).map((lang) => (
                   <button
                     key={lang}
                     onClick={() => setLanguage(lang)}
-                    className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${language === lang ? 'bg-blue-600 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    className={`px-3 py-1.5 text-[10px] font-bold uppercase rounded-md transition-all ${language === lang ? 'bg-[#1F2937] text-white shadow-sm ring-1 ring-white/5' : 'text-slate-500 hover:text-slate-300'}`}
                   >
                     {lang}
                   </button>
                 ))}
               </div>
 
-              <div className="h-4 w-[1px] bg-white/10 mx-1" />
+              <div className="h-6 w-[1px] bg-slate-800 mx-1" />
 
+              {/* Upload Button (CPP only) */}
               {language === 'cpp' && (
                 <button
                   onClick={async () => {
@@ -348,66 +337,56 @@ export default function BlocklyEditor() {
 
                     if (!port) {
                       try {
-                        // Request port if not connected
                         port = await navigator.serial.requestPort();
                         await port.open({ baudRate: 115200 });
                       } catch (e) {
-                        alert("Please connect/select a COM port first.");
-                        console.error("Failed to get serial port:", e);
+                        alert("Please connect a device first.");
                         return;
                       }
                     }
 
                     if (port) {
-                      if (controller.isConnected) {
-                        await controller.disconnect();
-                      }
+                      if (controller.isConnected) await controller.disconnect();
                       const term = {
-                        writeln: (msg: string) => {
-                          console.log(msg);
-                          window.dispatchEvent(new CustomEvent("blockly:log", { detail: { args: [msg] } }));
-                        },
-                        writeLine: (msg: string) => {
-                          console.log(msg);
-                          window.dispatchEvent(new CustomEvent("blockly:log", { detail: { args: [msg] } }));
-                        },
-                        write: (msg: string) => {
-                          console.log(msg);
-                          window.dispatchEvent(new CustomEvent("blockly:log", { detail: { args: [msg] } }));
-                        },
-                        clean: () => {
-                        }
+                        writeln: (msg: string) => window.dispatchEvent(new CustomEvent("blockly:upload_log", { detail: { args: [msg] } })),
+                        writeLine: (msg: string) => window.dispatchEvent(new CustomEvent("blockly:upload_log", { detail: { args: [msg] } })),
+                        write: (msg: string) => window.dispatchEvent(new CustomEvent("blockly:upload_log", { detail: { args: [msg] } })),
+                        clean: () => { }
                       };
-
                       const uploader = new FirmwareUploader(port, term);
                       const hex = await uploader.compileCode(code);
-                      if (hex) {
-                        await uploader.flashFirmware(hex);
-                      }
+                      if (hex) await uploader.flashFirmware(hex);
                     }
                   }}
-                  className="h-8 px-4 rounded-lg bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold uppercase tracking-wider shadow-lg shadow-orange-500/20 active:scale-95 transition-all flex items-center gap-2"
+                  className="h-10 px-5 rounded-xl bg-transparent border border-orange-500/30 text-orange-500 hover:bg-orange-500/10 text-xs font-bold uppercase tracking-wider active:scale-95 transition-all flex items-center gap-2"
                 >
-                  Upload
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                  <span>Upload</span>
                 </button>
               )}
 
+              {/* RUN BUTTON */}
               <button
                 onClick={onRun}
-                className="h-8 px-4 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white text-xs font-bold uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-2 group"
+                className="h-10 pl-4 pr-5 rounded-xl bg-[#22C55E] hover:bg-[#16A34A] text-[#052E16] text-xs font-extrabold uppercase tracking-wider shadow-[0_4px_12px_rgba(34,197,94,0.2)] hover:shadow-[0_6px_20px_rgba(34,197,94,0.3)] active:scale-[0.98] transition-all flex items-center gap-2"
               >
+                <div className="w-5 h-5 rounded-full bg-[#052E16]/10 flex items-center justify-center">
+                  <svg className="w-2.5 h-2.5 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                </div>
                 Run
-                <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
               </button>
             </div>
           </div>
 
-          <div className="flex flex-1 flex-row min-h-0" ref={showPanel ? activeAreaRef : null}>
-            <div className="flex-1 border-r border-white/5 overflow-hidden relative bg-[#1e1e1e]/50 backdrop-blur-sm">
+          {/* MAIN CONTENT SPLIT */}
+          <div className="flex flex-1 min-h-0 p-5 gap-5 overflow-hidden" ref={showPanel ? activeAreaRef : null}>
+            {/* EDITOR CARD (70%) */}
+            <div className="flex-[7] bg-[#0F172A] rounded-2xl border border-slate-800/60 shadow-xl overflow-hidden flex flex-col relative ring-1 ring-white/5">
               <CodePanel code={code} onChange={setCode} />
             </div>
-            <div className="w-[400px] min-h-0 overflow-hidden bg-[#0d0d0d] shadow-2xl">
+
+            {/* TERMINAL CARD (30%) */}
+            <div className="flex-[3] bg-[#0F172A] rounded-2xl border border-slate-800/60 shadow-xl overflow-hidden flex flex-col ring-1 ring-white/5">
               <Terminal />
             </div>
           </div>

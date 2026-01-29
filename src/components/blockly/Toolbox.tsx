@@ -1,6 +1,6 @@
 import React from 'react';
 import * as Blockly from 'blockly';
-import { TOOLBOX_CONFIG, CustomCategory } from './toolbox';
+import { TOOLBOX_CONFIG, CustomCategory } from './toolboxConfig';
 import Image from 'next/image';
 
 interface ToolboxProps {
@@ -25,7 +25,7 @@ const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string
 };
 
 export const Toolbox: React.FC<ToolboxProps> = ({ workspace, className, activeCategory, onCategoryClick }) => {
-    const categories = TOOLBOX_CONFIG.contents.filter((c: any) => c.kind === 'category') as CustomCategory[];
+    const categories = TOOLBOX_CONFIG.contents.filter((c): c is CustomCategory => c.kind === 'category');
 
     const handleClick = (category: CustomCategory) => {
         if (!workspace) return;
@@ -35,7 +35,10 @@ export const Toolbox: React.FC<ToolboxProps> = ({ workspace, className, activeCa
 
         const toolbox = workspace.getToolbox() as Blockly.Toolbox;
         if (toolbox && toolbox.getToolboxItems) {
-            const item = toolbox.getToolboxItems().find((i: any) => i.getName && i.getName() === category.name);
+            const item = toolbox.getToolboxItems().find((i) => {
+                // Check if 'getName' exists on the item (it might be ICollapsibleToolboxItem or similar)
+                return 'getName' in i && typeof (i as any).getName === 'function' && (i as any).getName() === category.name;
+            });
             if (item) {
                 toolbox.setSelectedItem(item);
             }
@@ -53,8 +56,8 @@ export const Toolbox: React.FC<ToolboxProps> = ({ workspace, className, activeCa
                         key={index}
                         onClick={() => handleClick(cat)}
                         className={`
-              flex items-center px-3 py-3 w-full text-left transition-all duration-200
-              ${isActive ? `${style.bg} ${style.text} border-l-4 ${style.border}` : 'hover:bg-slate-50 text-slate-700 border-l-4 border-transparent'}
+              flex items-center px-3 py-3 w-full text-left transition-all duration-200 border-l-[3px]
+              ${isActive ? `${style.bg} ${style.text} ${style.border}` : 'hover:bg-slate-50 text-slate-600 border-transparent'}
             `}
                     >
                         {/* Icon */}
@@ -81,7 +84,7 @@ export const Toolbox: React.FC<ToolboxProps> = ({ workspace, className, activeCa
                         </div>
 
                         {/* Label */}
-                        <span className={`font-medium text-sm ${isActive ? 'font-semibold' : ''}`}>
+                        <span className={`text-sm ${isActive ? 'font-bold' : 'font-medium'}`}>
                             {cat.name}
                         </span>
                     </button>
