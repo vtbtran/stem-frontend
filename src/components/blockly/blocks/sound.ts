@@ -11,7 +11,7 @@ export const defineSoundBlocks = () => {
                 .appendField("phát tiếng bíp");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour("#CF63CF");
+            this.setStyle('sound-style');
             this.setTooltip("Phát một âm thanh bíp ngắn");
             this.setHelpUrl("");
         }
@@ -40,7 +40,7 @@ export const defineSoundBlocks = () => {
                 .appendField("giây");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour("#CF63CF");
+            this.setStyle('sound-style');
             this.setTooltip("Phát một nốt nhạc với tần số và thời gian tùy chỉnh");
             this.setHelpUrl("");
         }

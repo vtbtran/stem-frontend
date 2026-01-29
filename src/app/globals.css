@@ -51,35 +51,15 @@ body {
 
 /* ===== Split Side-by-Side Layout ===== */
 
-/* Toolbox Panel */
-.blockly-host .blocklyToolboxDiv {
+
+/* Hover State */
+.blocklyTreeRow:not(.blocklyTreeSelected):hover {
   background-color: #f1f5f9 !important;
   /* Slate 100 */
-  border-right: 1px solid #e2e8f0 !important;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
 }
 
-/* Flyout Panel background */
-.blockly-host .blocklyFlyoutBackground {
-  fill: #ffffff !important;
-  fill-opacity: 1 !important;
-}
 
-/* Flyout Panel */
-.blockly-host .blocklyFlyout {
-  border-right: 2px solid #e2e8f0 !important;
-  box-shadow: 10px 0 20px rgba(0, 0, 0, 0.05);
-}
-
-/* Workspace background */
-.blockly-host .blocklyMainBackground {
-  stroke-width: 0 !important;
-}
-
-/* Flyout scrollbar */
-.blockly-host .blocklyFlyout .blocklyScrollbarHandle {
-  fill: #cbd5e1 !important;
-}
 
 /* ===== Divider line (FIX: don't use ::before on SVG .blocklyWorkspace) ===== */
 .blockly-host::before {
@@ -90,9 +70,26 @@ body {
   top: 0;
   bottom: 0;
   width: 2px;
-  background: #f1f5f9;
+  background: #334155;
   z-index: 2;
   pointer-events: none;
+  opacity: 0.5;
+}
+
+/* Custom Scrollbar for Dark Mode */
+.blocklyFlyoutScrollbar {
+  fill: #334155 !important;
+  fill-opacity: 0.8 !important;
+}
+
+.blocklyScrollbarHandle {
+  fill: #475569 !important;
+  /* Slate 600 */
+}
+
+.blocklyScrollbarBackground {
+  fill: transparent !important;
+  stroke: none !important;
 }
 
 /* =========================================================

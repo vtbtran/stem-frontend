@@ -12,7 +12,7 @@ export const defineHardwareBlocks = () => {
                 .appendField(new Blockly.FieldDropdown([["Bật", "on"], ["Tắt", "off"]]), "STATE");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour("#FF9900"); // Orange for Hardware
+            this.setStyle('hardware-style'); // Orange for Hardware
             this.setTooltip("Điều khiển đèn LED trên xe");
             this.setHelpUrl("");
         }
@@ -42,7 +42,7 @@ export const defineHardwareBlocks = () => {
                 .appendField("độ");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour("#FF9900");
+            this.setStyle('hardware-style');
             this.setTooltip("Quay Servo tới góc chỉ định (0-180)");
             this.setHelpUrl("");
         }

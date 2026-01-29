@@ -1,319 +1,428 @@
-export const TOOLBOX_XML = `
-<xml>
-  <category name="Điều khiển" colour="#4C97FF">
-    <block type="event_start"></block>
-    <block type="control_forever"></block>
-    <block type="control_stop"></block>
-    <block type="control_stop"></block>
-    <block type="control_wait"></block>
-    <sep gap="32"></sep>
-    <block type="motion_move_forward">
-      <value name="STEPS">
-        <shadow type="math_number">
-          <field name="NUM">1</field>
-        </shadow>
-      </value>
-    </block>
-    <block type="motion_move_backward">
-      <value name="STEPS">
-        <shadow type="math_number">
-          <field name="NUM">1</field>
-        </shadow>
-      </value>
-    </block>
-    <block type="motion_move_forward_time"></block>
-    <block type="motion_move_backward_time"></block>
-    <block type="motion_turn_left">
-      <value name="DEGREES">
-        <shadow type="math_number">
-          <field name="NUM">90</field>
-        </shadow>
-      </value>
-    </block>
-    <block type="motion_turn_right">
-      <value name="DEGREES">
-        <shadow type="math_number">
-          <field name="NUM">90</field>
-        </shadow>
-      </value>
-    </block>
-  </category>
-  <category name="Phần cứng" colour="#FF9900">
-    <block type="hardware_led"></block>
-    <block type="hardware_servo"></block>
-  </category>
-  <category name="Thoại" colour="#9966FF">
-    <block type="looks_say"></block>
-  </category>
-  <category name="Âm thanh" colour="#CF63CF">
-    <block type="sound_beep"></block>
-    <block type="sound_tone"></block>
-  </category>
-  <sep></sep>
-  <category name="Logic" colour="#5C81A6">
-    <block type="controls_if"></block>
-    <block type="logic_compare"></block>
-    <block type="logic_operation"></block>
-    <block type="logic_negate"></block>
-    <block type="logic_boolean"></block>
-    <block type="logic_null"></block>
-    <block type="logic_ternary"></block>
-  </category>
+import * as Blockly from 'blockly';
 
-  <category name="Vòng lặp" colour="#5CA65C">
-    <block type="controls_repeat_ext">
-      <value name="TIMES">
-        <shadow type="math_number">
-          <field name="NUM">10</field>
-        </shadow>
-      </value>
-    </block>
-    <block type="controls_whileUntil"></block>
-    <block type="controls_for">
-      <value name="FROM"><shadow type="math_number"><field name="NUM">1</field></shadow></value>
-      <value name="TO"><shadow type="math_number"><field name="NUM">3</field></shadow></value>
-      <value name="BY"><shadow type="math_number"><field name="NUM">1</field></shadow></value>
-    </block>
-    <block type="controls_forEach"></block>
-    <block type="controls_flow_statements"></block>
-    
-    <!-- Pre-assembled: Loop with Break -->
-    <block type="controls_repeat_ext">
-      <value name="TIMES">
-        <shadow type="math_number">
-          <field name="NUM">10</field>
-        </shadow>
-      </value>
-      <statement name="DO">
-        <block type="controls_flow_statements">
-          <field name="FLOW">BREAK</field>
-        </block>
-      </statement>
-    </block>
-  </category>
+// Extend CategoryInfo to include cssConfig via intersection
+export type CustomCategory = {
+  kind: 'category';
+  name: string;
+  contents?: Blockly.utils.toolbox.ToolboxItemInfo[];
+  custom?: string;
+  categorystyle?: string;
+  imageUrl?: string;
+  cssConfig?: {
+    row?: string;
+    icon?: string;
+    [key: string]: string | undefined;
+  };
+  hidden?: string;
+  colour?: string;
+  expanded?: string | boolean;
+};
 
-  <category name="Toán học" colour="#5C68A6">
-    <block type="math_number">
-      <field name="NUM">123</field>
-    </block>
-    <block type="math_arithmetic">
-      <value name="A">
-        <shadow type="math_number">
-          <field name="NUM">1</field>
-        </shadow>
-      </value>
-      <value name="B">
-        <shadow type="math_number">
-          <field name="NUM">1</field>
-        </shadow>
-      </value>
-    </block>
-    <block type="math_single">
-      <value name="NUM">
-        <shadow type="math_number">
-          <field name="NUM">9</field>
-        </shadow>
-      </value>
-    </block>
-    <block type="math_trig">
-      <value name="NUM">
-        <shadow type="math_number">
-          <field name="NUM">45</field>
-        </shadow>
-      </value>
-    </block>
-    <block type="math_constant"></block>
-    <block type="math_number_property">
-      <value name="NUMBER_TO_CHECK">
-        <shadow type="math_number">
-          <field name="NUM">0</field>
-        </shadow>
-      </value>
-    </block>
-    <block type="math_round">
-      <value name="NUM">
-        <shadow type="math_number">
-          <field name="NUM">3.1</field>
-        </shadow>
-      </value>
-    </block>
-    <block type="math_on_list"></block>
-    <block type="math_modulo">
-      <value name="DIVIDEND">
-        <shadow type="math_number">
-          <field name="NUM">64</field>
-        </shadow>
-      </value>
-      <value name="DIVISOR">
-        <shadow type="math_number">
-          <field name="NUM">10</field>
-        </shadow>
-      </value>
-    </block>
-    <block type="math_constrain">
-      <value name="VALUE">
-        <shadow type="math_number">
-          <field name="NUM">50</field>
-        </shadow>
-      </value>
-      <value name="LOW">
-        <shadow type="math_number">
-          <field name="NUM">1</field>
-        </shadow>
-      </value>
-      <value name="HIGH">
-        <shadow type="math_number">
-          <field name="NUM">100</field>
-        </shadow>
-      </value>
-    </block>
-    <block type="math_random_int">
-      <value name="FROM">
-        <shadow type="math_number">
-          <field name="NUM">1</field>
-        </shadow>
-      </value>
-      <value name="TO">
-        <shadow type="math_number">
-          <field name="NUM">100</field>
-        </shadow>
-      </value>
-    </block>
-    <block type="math_random_float"></block>
-  </category>
+// Union of our custom category and standard items
+export type CustomToolboxItem = CustomCategory | Blockly.utils.toolbox.ToolboxItemInfo;
 
-  <category name="Văn bản" colour="#5CA68D">
-    <block type="text"></block>
-    <block type="text_join"></block>
-    <block type="text_append">
-      <value name="TEXT">
-        <shadow type="text"></shadow>
-      </value>
-    </block>
-    <block type="text_length">
-      <value name="VALUE">
-        <shadow type="text">
-          <field name="TEXT">abc</field>
-        </shadow>
-      </value>
-    </block>
-    <block type="text_isEmpty">
-      <value name="VALUE">
-        <shadow type="text">
-          <field name="TEXT"></field>
-        </shadow>
-      </value>
-    </block>
-    <block type="text_indexOf">
-      <value name="VALUE">
-        <block type="variables_get">
-          <field name="VAR">text</field>
-        </block>
-      </value>
-      <value name="FIND">
-        <shadow type="text">
-          <field name="TEXT">abc</field>
-        </shadow>
-      </value>
-    </block>
-    <block type="text_charAt">
-      <value name="VALUE">
-        <block type="variables_get">
-          <field name="VAR">text</field>
-        </block>
-      </value>
-    </block>
-    <block type="text_getSubstring">
-      <value name="STRING">
-        <block type="variables_get">
-          <field name="VAR">text</field>
-        </block>
-      </value>
-    </block>
-    <block type="text_changeCase">
-      <value name="TEXT">
-        <shadow type="text">
-          <field name="TEXT">abc</field>
-        </shadow>
-      </value>
-    </block>
-    <block type="text_trim">
-      <value name="TEXT">
-        <shadow type="text">
-          <field name="TEXT">abc</field>
-        </shadow>
-      </value>
-    </block>
-    <block type="text_print">
-      <value name="TEXT">
-        <shadow type="text">
-          <field name="TEXT">abc</field>
-        </shadow>
-      </value>
-    </block>
-    <block type="text_prompt_ext">
-      <value name="TEXT">
-        <shadow type="text">
-          <field name="TEXT">abc</field>
-        </shadow>
-      </value>
-    </block>
-  </category>
+// Custom Toolbox Definition
+interface CustomToolboxDefinition {
+  kind: string;
+  contents: CustomToolboxItem[];
+}
 
-  <category name="Danh sách" colour="#745CA6">
-    <block type="lists_create_with">
-      <mutation items="0"></mutation>
-    </block>
-    <block type="lists_create_with"></block>
-    <block type="lists_repeat">
-      <value name="NUM">
-        <shadow type="math_number">
-          <field name="NUM">5</field>
-        </shadow>
-      </value>
-    </block>
-    <block type="lists_length"></block>
-    <block type="lists_isEmpty"></block>
-    <block type="lists_indexOf">
-      <value name="VALUE">
-        <block type="variables_get">
-          <field name="VAR">list</field>
-        </block>
-      </value>
-    </block>
-    <block type="lists_getIndex">
-      <value name="VALUE">
-        <block type="variables_get">
-          <field name="VAR">list</field>
-        </block>
-      </value>
-    </block>
-    <block type="lists_setIndex">
-      <value name="LIST">
-        <block type="variables_get">
-          <field name="VAR">list</field>
-        </block>
-      </value>
-    </block>
-    <block type="lists_getSublist">
-      <value name="LIST">
-        <block type="variables_get">
-          <field name="VAR">list</field>
-        </block>
-      </value>
-    </block>
-    <block type="lists_split">
-      <value name="DELIM">
-        <shadow type="text">
-          <field name="TEXT">,</field>
-        </shadow>
-      </value>
-    </block>
-    <block type="lists_sort"></block>
-    <block type="lists_reverse"></block>
-  </category>
-
-  <category name="Biến" colour="#A65C81" custom="VARIABLE"></category>
-  <category name="Hàm" colour="#9A5CA6" custom="PROCEDURE"></category>
-</xml>
-`;
+export const TOOLBOX_CONFIG: CustomToolboxDefinition = {
+  kind: "categoryToolbox",
+  contents: [
+    {
+      kind: "category",
+      name: "Điều khiển",
+      categorystyle: "control-category",
+      imageUrl: "/icons/mixer.png",
+      cssConfig: {
+        icon: "category-control"
+      },
+      contents: [
+        { kind: "block", type: "event_start" },
+        { kind: "block", type: "control_forever" },
+        { kind: "block", type: "control_stop" },
+        { kind: "block", type: "control_wait" },
+        { kind: "sep", gap: 32 },
+        {
+          kind: "block",
+          type: "motion_move_forward",
+          fields: { SPEED: 150, SECS: 1 }
+        },
+        {
+          kind: "block",
+          type: "motion_move_backward",
+          fields: { SPEED: 150, SECS: 1 }
+        },
+        {
+          kind: "block",
+          type: "motion_turn_left",
+          fields: { SPEED: 150, SECS: 0.5 }
+        },
+        {
+          kind: "block",
+          type: "motion_turn_right",
+          fields: { SPEED: 150, SECS: 0.5 }
+        }
+      ]
+    },
+    {
+      kind: "category",
+      name: "Phần cứng",
+      categorystyle: "hardware-category",
+      imageUrl: "/icons/desk-lamp.png",
+      cssConfig: {
+        icon: "category-hardware"
+      },
+      contents: [
+        { kind: "block", type: "hardware_led" },
+        { kind: "block", type: "hardware_servo" }
+      ]
+    },
+    {
+      kind: "category",
+      name: "Thoại",
+      categorystyle: "speech-category",
+      imageUrl: "/icons/conversation.png",
+      cssConfig: {
+        icon: "category-speech"
+      },
+      contents: [
+        { kind: "block", type: "looks_say" }
+      ]
+    },
+    {
+      kind: "category",
+      name: "Âm thanh",
+      categorystyle: "sound-category",
+      imageUrl: "/icons/speaker-filled-audio-tool.png",
+      cssConfig: {
+        icon: "category-sound"
+      },
+      contents: [
+        { kind: "block", type: "sound_beep" },
+        { kind: "block", type: "sound_tone" }
+      ]
+    },
+    { kind: "sep" },
+    {
+      kind: "category",
+      name: "Logic",
+      categorystyle: "logic-category",
+      imageUrl: "/icons/skill-development.png",
+      cssConfig: {
+        icon: "category-logic"
+      },
+      contents: [
+        { kind: "block", type: "controls_if" },
+        { kind: "block", type: "logic_compare" },
+        { kind: "block", type: "logic_operation" },
+        { kind: "block", type: "logic_negate" },
+        { kind: "block", type: "logic_boolean" },
+        { kind: "block", type: "logic_null" },
+        { kind: "block", type: "logic_ternary" }
+      ]
+    },
+    {
+      kind: "category",
+      name: "Vòng lặp",
+      categorystyle: "loops-category",
+      imageUrl: "/icons/refresh.png",
+      cssConfig: {
+        icon: "category-loops"
+      },
+      contents: [
+        {
+          kind: "block",
+          type: "controls_repeat_ext",
+          inputs: {
+            TIMES: {
+              shadow: {
+                type: "math_number",
+                fields: { NUM: 10 }
+              }
+            }
+          }
+        },
+        { kind: "block", type: "controls_whileUntil" },
+        {
+          kind: "block",
+          type: "controls_for",
+          inputs: {
+            FROM: { shadow: { type: "math_number", fields: { NUM: 1 } } },
+            TO: { shadow: { type: "math_number", fields: { NUM: 3 } } },
+            BY: { shadow: { type: "math_number", fields: { NUM: 1 } } }
+          }
+        },
+        { kind: "block", type: "controls_forEach" },
+        { kind: "block", type: "controls_flow_statements" },
+        // Pre-assembled Loop with Break
+        {
+          kind: "block",
+          type: "controls_repeat_ext",
+          inputs: {
+            TIMES: {
+              shadow: {
+                type: "math_number",
+                fields: { NUM: 10 }
+              }
+            },
+            DO: {
+              block: {
+                type: "controls_flow_statements",
+                fields: { FLOW: "BREAK" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      kind: "category",
+      name: "Toán học",
+      categorystyle: "math-category",
+      imageUrl: "/icons/math-symbols.png",
+      cssConfig: {
+        icon: "category-math"
+      },
+      contents: [
+        {
+          kind: "block",
+          type: "math_number",
+          fields: { NUM: 123 }
+        },
+        {
+          kind: "block",
+          type: "math_arithmetic",
+          inputs: {
+            A: { shadow: { type: "math_number", fields: { NUM: 1 } } },
+            B: { shadow: { type: "math_number", fields: { NUM: 1 } } }
+          }
+        },
+        {
+          kind: "block",
+          type: "math_single",
+          inputs: {
+            NUM: { shadow: { type: "math_number", fields: { NUM: 9 } } }
+          }
+        },
+        {
+          kind: "block",
+          type: "math_trig",
+          inputs: {
+            NUM: { shadow: { type: "math_number", fields: { NUM: 45 } } }
+          }
+        },
+        { kind: "block", type: "math_constant" },
+        {
+          kind: "block",
+          type: "math_number_property",
+          inputs: {
+            NUMBER_TO_CHECK: { shadow: { type: "math_number", fields: { NUM: 0 } } }
+          }
+        },
+        {
+          kind: "block",
+          type: "math_round",
+          inputs: {
+            NUM: { shadow: { type: "math_number", fields: { NUM: 3.1 } } }
+          }
+        },
+        { kind: "block", type: "math_on_list" },
+        {
+          kind: "block",
+          type: "math_modulo",
+          inputs: {
+            DIVIDEND: { shadow: { type: "math_number", fields: { NUM: 64 } } },
+            DIVISOR: { shadow: { type: "math_number", fields: { NUM: 10 } } }
+          }
+        },
+        {
+          kind: "block",
+          type: "math_constrain",
+          inputs: {
+            VALUE: { shadow: { type: "math_number", fields: { NUM: 50 } } },
+            LOW: { shadow: { type: "math_number", fields: { NUM: 1 } } },
+            HIGH: { shadow: { type: "math_number", fields: { NUM: 100 } } }
+          }
+        },
+        {
+          kind: "block",
+          type: "math_random_int",
+          inputs: {
+            FROM: { shadow: { type: "math_number", fields: { NUM: 1 } } },
+            TO: { shadow: { type: "math_number", fields: { NUM: 100 } } }
+          }
+        },
+        { kind: "block", type: "math_random_float" }
+      ]
+    },
+    {
+      kind: "category",
+      name: "Văn bản",
+      categorystyle: "text-category",
+      imageUrl: "/icons/document.png",
+      cssConfig: {
+        icon: "category-text"
+      },
+      contents: [
+        { kind: "block", type: "text" },
+        { kind: "block", type: "text_join" },
+        {
+          kind: "block",
+          type: "text_append",
+          inputs: {
+            TEXT: { shadow: { type: "text" } }
+          }
+        },
+        {
+          kind: "block",
+          type: "text_length",
+          inputs: {
+            VALUE: { shadow: { type: "text", fields: { TEXT: "abc" } } }
+          }
+        },
+        {
+          kind: "block",
+          type: "text_isEmpty",
+          inputs: {
+            VALUE: { shadow: { type: "text", fields: { TEXT: "" } } }
+          }
+        },
+        {
+          kind: "block",
+          type: "text_indexOf",
+          inputs: {
+            VALUE: { block: { type: "variables_get", fields: { VAR: "text" } } },
+            FIND: { shadow: { type: "text", fields: { TEXT: "abc" } } }
+          }
+        },
+        {
+          kind: "block",
+          type: "text_charAt",
+          inputs: {
+            VALUE: { block: { type: "variables_get", fields: { VAR: "text" } } }
+          }
+        },
+        {
+          kind: "block",
+          type: "text_getSubstring",
+          inputs: {
+            STRING: { block: { type: "variables_get", fields: { VAR: "text" } } }
+          }
+        },
+        {
+          kind: "block",
+          type: "text_changeCase",
+          inputs: {
+            TEXT: { shadow: { type: "text", fields: { TEXT: "abc" } } }
+          }
+        },
+        {
+          kind: "block",
+          type: "text_trim",
+          inputs: {
+            TEXT: { shadow: { type: "text", fields: { TEXT: "abc" } } }
+          }
+        },
+        {
+          kind: "block",
+          type: "text_print",
+          inputs: {
+            TEXT: { shadow: { type: "text", fields: { TEXT: "abc" } } }
+          }
+        },
+        {
+          kind: "block",
+          type: "text_prompt_ext",
+          inputs: {
+            TEXT: { shadow: { type: "text", fields: { TEXT: "abc" } } }
+          }
+        }
+      ]
+    },
+    {
+      kind: "category",
+      name: "Danh sách",
+      categorystyle: "list-category",
+      imageUrl: "/icons/list.png",
+      cssConfig: {
+        icon: "category-lists"
+      },
+      contents: [
+        {
+          kind: "block",
+          type: "lists_create_with",
+          extraState: { itemCount: 0 }
+        },
+        { kind: "block", type: "lists_create_with" },
+        {
+          kind: "block",
+          type: "lists_repeat",
+          inputs: {
+            NUM: { shadow: { type: "math_number", fields: { NUM: 5 } } }
+          }
+        },
+        { kind: "block", type: "lists_length" },
+        { kind: "block", type: "lists_isEmpty" },
+        {
+          kind: "block",
+          type: "lists_indexOf",
+          inputs: {
+            VALUE: { block: { type: "variables_get", fields: { VAR: "list" } } }
+          }
+        },
+        {
+          kind: "block",
+          type: "lists_getIndex",
+          inputs: {
+            VALUE: { block: { type: "variables_get", fields: { VAR: "list" } } }
+          }
+        },
+        {
+          kind: "block",
+          type: "lists_setIndex",
+          inputs: {
+            LIST: { block: { type: "variables_get", fields: { VAR: "list" } } }
+          }
+        },
+        {
+          kind: "block",
+          type: "lists_getSublist",
+          inputs: {
+            LIST: { block: { type: "variables_get", fields: { VAR: "list" } } }
+          }
+        },
+        {
+          kind: "block",
+          type: "lists_split",
+          inputs: {
+            DELIM: { shadow: { type: "text", fields: { TEXT: "," } } }
+          }
+        },
+        { kind: "block", type: "lists_sort" },
+        { kind: "block", type: "lists_reverse" }
+      ]
+    },
+    {
+      kind: "category",
+      name: "Biến",
+      custom: "VARIABLE",
+      categorystyle: "variable-category",
+      imageUrl: "/icons/variable-symbol-in-window.png",
+      cssConfig: {
+        icon: "category-variables"
+      }
+    },
+    {
+      kind: "category",
+      name: "Hàm",
+      custom: "PROCEDURE",
+      categorystyle: "function-category",
+      imageUrl: "/icons/calculate.png",
+      cssConfig: {
+        icon: "category-functions"
+      }
+    }
+  ]
+};

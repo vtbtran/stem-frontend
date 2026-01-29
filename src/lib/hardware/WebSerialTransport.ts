@@ -2,7 +2,9 @@ import { ITransport } from "./types";
 
 export class WebSerialTransport implements ITransport {
     private port: SerialPort | null = null;
-    private writer: WritableStreamDefaultWriter<string> | null = null;
+    private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
+    private readableStreamClosed: Promise<void> | null = null;
+    private readerCanceled = false;
     private reader: ReadableStreamDefaultReader<string> | null = null;
     private keepReading = false;
     private onReceiveCallback: ((data: string) => void) | null = null;
@@ -20,12 +22,13 @@ export class WebSerialTransport implements ITransport {
             await this.port.open({ baudRate: 115200 });
             this.isConnected = true;
 
-            const textEncoder = new TextEncoderStream();
             if (!this.port.writable) throw new Error("Port not writable");
-            const writableStreamClosed = textEncoder.readable.pipeTo(this.port.writable);
-            this.writer = textEncoder.writable.getWriter();
+
+            // Direct binary writer
+            this.writer = this.port.writable.getWriter();
 
             this.readLoop();
+            console.log("✅ Serial Port Connected successfully");
             return true;
         } catch (err) {
             console.error("Serial Connection Failed:", err);
@@ -33,22 +36,43 @@ export class WebSerialTransport implements ITransport {
         }
     }
 
+    public getPort(): SerialPort | null {
+        return this.port;
+    }
+
     async disconnect(): Promise<void> {
+        this.keepReading = false;
+
+        if (this.reader) {
+            this.readerCanceled = true;
+            await this.reader.cancel();
+            if (this.readableStreamClosed) {
+                await this.readableStreamClosed.catch(() => { });
+            }
+            this.reader = null;
+        }
+
         if (this.writer) {
             await this.writer.close();
             this.writer = null;
         }
+
         if (this.port) {
             await this.port.close();
             this.port = null;
         }
         this.isConnected = false;
-        this.keepReading = false;
     }
 
     async send(data: string): Promise<void> {
         if (!this.writer) return;
-        await this.writer.write(data + "\n");
+        const encoder = new TextEncoder();
+        await this.writer.write(encoder.encode(data + "\n"));
+    }
+
+    async sendBinary(data: Uint8Array): Promise<void> {
+        if (!this.writer) return;
+        await this.writer.write(data);
     }
 
     onReceive(callback: (data: string) => void): void {
@@ -60,7 +84,7 @@ export class WebSerialTransport implements ITransport {
 
         this.keepReading = true;
         const textDecoder = new TextDecoderStream();
-        const readableStreamClosed = this.port.readable.pipeTo(textDecoder.writable);
+        this.readableStreamClosed = this.port.readable.pipeTo(textDecoder.writable);
         this.reader = textDecoder.readable.getReader();
 
         try {

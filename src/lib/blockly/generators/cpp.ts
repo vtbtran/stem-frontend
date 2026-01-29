@@ -50,13 +50,46 @@ const Order = {
 // Attach ORDER to generator for reference
 cppGenerator.ORDER = Order;
 
+// Custom property to store workspace
+(cppGenerator as any).workspace_ = null;
+
 cppGenerator.init = function (workspace: Blockly.Workspace) {
-    // Reset
+    (cppGenerator as any).workspace_ = workspace;
 };
 
 cppGenerator.finish = function (code: string) {
-    const indentedCode = cppGenerator.prefixLines(code, '  ');
-    return `#include <iostream>\n#include "robot.h"\n\nvoid main() {\n${indentedCode}}\n`;
+    // We ignore the input 'code' (which is a blind concatenation of everything)
+    // Instead we iterate top blocks to separate Setup vs Loop logic.
+
+    const workspace = (cppGenerator as any).workspace_ as Blockly.Workspace;
+    if (!workspace) return code; // Fallback
+
+    const topBlocks = workspace.getTopBlocks(true); // true = ordered by position? usually doesn't matter much for this
+
+    let setupCode = '';
+    let loopCode = '';
+
+    for (const block of topBlocks) {
+        if (block.type === 'event_start') {
+            // This is a Setup block.
+            // blockToCode on the start block returns the code of connected blocks (via scrub_)
+            const blockCode = cppGenerator.blockToCode(block);
+            if (typeof blockCode === 'string') {
+                setupCode += blockCode;
+            }
+        } else if (block.type === 'control_forever') {
+            // This is a Loop block (Top Level).
+            // We want the CONTENT inside the loop, not the 'while(true)' wrapper.
+            const branch = cppGenerator.statementToCode(block, 'DO');
+            loopCode += branch;
+        }
+        // ALL OTHER BLOCKS ARE IGNORED (Orphans)
+    }
+
+    const indentedSetup = cppGenerator.prefixLines(setupCode, '  ');
+    const indentedLoop = cppGenerator.prefixLines(loopCode, '  ');
+
+    return `#include "robot.h"\n\nvoid setup() {\n${indentedSetup}}\n\nvoid loop() {\n${indentedLoop}}\n`;
 };
 
 cppGenerator.scrub_ = function (block: Blockly.Block, code: string, thisOnly?: boolean) {
@@ -83,7 +116,7 @@ cppGenerator.valueToCode = function (block: Blockly.Block, name: string, outerOr
         // Fallback or error
         return '';
     }
-    let code = tuple[0];
+    const code = tuple[0];
     const innerOrder = tuple[1];
 
     // Add parentheses if needed
@@ -105,11 +138,9 @@ cppGenerator.prefixLines = function (text: string, prefix: string) {
 
 cppGenerator.statementToCode = function (block: Blockly.Block, name: string) {
     const targetBlock = block.getInputTargetBlock(name);
-    let code = this.blockToCode(targetBlock);
-    if (Array.isArray(code)) {
-        // If value block is connected to statement input, drop order
-        code = code[0];
-    }
+    const rawCode = this.blockToCode(targetBlock);
+    // If value block is connected to statement input, drop order
+    const code = Array.isArray(rawCode) ? rawCode[0] : rawCode;
     if (!code) {
         return '';
     }
@@ -246,7 +277,7 @@ cppGenerator.forBlock['math_single'] = function (block: Blockly.Block) {
         'EXP': 'exp',
         'POW10': 'pow10'
     };
-    // @ts-ignore
+    // @ts-expect-error - operator may not be a key of TRANSFORMS
     const func = TRANSFORMS[operator];
     if (func) {
         arg = cppGenerator.valueToCode(block, 'NUM', Order.NONE) || '0';
@@ -277,12 +308,10 @@ cppGenerator.forBlock['variables_set'] = function (block: Blockly.Block) {
 
 cppGenerator.forBlock['controls_whileUntil'] = function (block: Blockly.Block) {
     const until = block.getFieldValue('MODE') === 'UNTIL';
-    let argument0 = cppGenerator.valueToCode(block, 'BOOL', until ? Order.LOGICAL_NOT : Order.NONE) || 'false';
-    let branch = cppGenerator.statementToCode(block, 'DO');
+    const argument0Raw = cppGenerator.valueToCode(block, 'BOOL', until ? Order.LOGICAL_NOT : Order.NONE) || 'false';
+    const branch = cppGenerator.statementToCode(block, 'DO');
 
-    if (until) {
-        argument0 = '!' + argument0;
-    }
+    const argument0 = until ? '!' + argument0Raw : argument0Raw;
     return `while (${argument0}) {\n${branch}}\n`;
 };
 

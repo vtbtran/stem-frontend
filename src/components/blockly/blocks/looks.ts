@@ -15,7 +15,7 @@ export const defineLooksBlocks = () => {
                 .appendField("giây");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour("#9966FF");
+            this.setStyle('speech-style');
             this.setTooltip("Hiển thị bong bóng thoại trong khoảng thời gian");
             this.setHelpUrl("");
         }

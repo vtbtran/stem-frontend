@@ -1,15 +1,19 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import * as Blockly from "blockly";
 import "blockly/blocks";
+import "blockly/msg/vi";
 import "blockly/javascript";
 import "blockly/python";
 import { JavascriptGenerator } from "blockly/javascript";
 import { PythonGenerator } from "blockly/python";
 import { CppGenerator } from "@/lib/blockly/generators/cpp";
 import { javascriptGenerator, pythonGenerator, cppGenerator } from "@/lib/blockly/generators";
-import { TOOLBOX_XML } from "./toolbox";
+import { TOOLBOX_CONFIG, CustomCategory } from "./toolbox";
+import { Toolbox } from "./Toolbox";
+import { OnyxTheme } from "./BlocklyTheme";
 import PromptModal from "../PromptModal";
 import { defineMotionBlocks } from "./blocks/motion";
 import { defineControlBlocks } from "./blocks/control";
@@ -54,10 +58,12 @@ function installFlyoutNoZoomPatch() {
 export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXmlChange, isVisible }: Props) {
   const hostRef = React.useRef<HTMLDivElement | null>(null);
   const workspaceRef = React.useRef<Blockly.WorkspaceSvg | null>(null);
+  const [workspaceState, setWorkspaceState] = React.useState<Blockly.WorkspaceSvg | null>(null);
 
   const languageRef = React.useRef(language);
   const onCodeRef = React.useRef(onCode);
   const onXmlChangeRef = React.useRef(onXmlChange);
+  const [activeCategory, setActiveCategory] = React.useState<string>("");
 
 
 
@@ -72,7 +78,7 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
     if (!ws) return;
 
     const currentLang = languageRef.current;
-    let generator: JavascriptGenerator | PythonGenerator | CppGenerator; 
+    let generator: JavascriptGenerator | PythonGenerator | CppGenerator;
     if (currentLang === "py") generator = pythonGenerator;
     else if (currentLang === "cpp") generator = cppGenerator;
     else generator = javascriptGenerator;
@@ -160,25 +166,33 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
     installFlyoutNoZoomPatch();
 
     const ws = Blockly.inject(host, {
-      toolbox: TOOLBOX_XML,
+      toolbox: TOOLBOX_CONFIG as unknown as Blockly.utils.toolbox.ToolboxDefinition,
       toolboxPosition: "start",
       horizontalLayout: false,
 
       trashcan: true,
       media: "https://unpkg.com/blockly/media/",
+      grid: {
+        spacing: 25,
+        length: 3,
+        colour: '#cbd5e1', // Slate-300, light grid
+        snap: true,
+      },
       zoom: {
         controls: false,
         wheel: true,
-        startScale: 1,
-        maxScale: 2.5,
-        minScale: 0.5,
+        startScale: 1.0,
+        maxScale: 3,
+        minScale: 0.3,
         scaleSpeed: 1.2,
       },
+      theme: OnyxTheme,
       scrollbars: true,
       move: { scrollbars: true, drag: true, wheel: false },
     });
 
     workspaceRef.current = ws;
+    setWorkspaceState(ws);
 
     // ---------------- helpers ----------------
     const lastToolboxCategoryRef = { current: "0" };
@@ -200,53 +214,7 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
       }
     };
 
-    const getViewRectInWorkspace = () => {
-      const m = ws.getMetrics?.();
-      if (!m) return null;
-      return {
-        left: m.viewLeft,
-        top: m.viewTop,
-        right: m.viewLeft + m.viewWidth,
-        bottom: m.viewTop + m.viewHeight,
-      };
-    };
 
-    const getBlockCenterInWorkspace = (block: Blockly.BlockSvg) => {
-      const xy = block.getRelativeToSurfaceXY();
-      let w = block.width ?? 0;
-      let h = block.height ?? 0;
-
-      if ((!w || !h) && block.getSvgRoot()) {
-        try {
-          const bbox = (block.getSvgRoot() as SVGGElement).getBBox();
-          w = bbox.width;
-          h = bbox.height;
-        } catch {
-          // ignore
-        }
-      }
-
-      return { cx: xy.x + w / 2, cy: xy.y + h / 2 };
-    };
-
-    const deleteIfDroppedOutside = (blockId: string) => {
-      const block = ws.getBlockById(blockId) as Blockly.BlockSvg | null;
-      if (!block) return;
-
-      // only delete top-level when dropped outside workspace (avoid nuking attached stacks)
-      if (block.getParent()) return;
-
-      const rect = getViewRectInWorkspace();
-      if (!rect) return;
-
-      const { cx, cy } = getBlockCenterInWorkspace(block);
-      const inside = cx >= rect.left && cx <= rect.right && cy >= rect.top && cy <= rect.bottom;
-
-      if (!inside) {
-        block.dispose(true);
-        emitCode();
-      }
-    };
 
 
 
@@ -257,6 +225,33 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
         (flyoutUnknown as FlyoutWithReflow).reflow?.();
       }
     };
+
+    // Dynamic Icon CSS Injection
+    const styleId = 'blockly-toolbox-icons';
+    let styleTag = document.getElementById(styleId) as HTMLStyleElement;
+    if (!styleTag) {
+      styleTag = document.createElement('style');
+      styleTag.id = styleId;
+      document.head.appendChild(styleTag);
+    }
+
+    const categories = TOOLBOX_CONFIG.contents.filter((c: any) => c.kind === 'category' && c.imageUrl) as CustomCategory[];
+    const cssRules = categories.map(c => `
+      .blocklyTreeIcon.${c.cssConfig?.icon} { 
+        display: inline-block !important;
+        width: 24px !important;
+        height: 24px !important;
+        background-image: url("${c.imageUrl}") !important;
+        background-size: 20px 20px !important;
+        background-repeat: no-repeat !important;
+        background-position: center center !important;
+      }
+      .blocklyTreeIcon.${c.cssConfig?.icon}::before {
+        display: none !important;
+        content: none !important;
+      }
+    `).join('\n');
+    styleTag.textContent = cssRules;
 
     // Initial setup
     ws.clear();
@@ -312,33 +307,57 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
         if (clickEvent.blockId) {
           const block = ws.getBlockById(clickEvent.blockId);
           if (block && block.type === 'event_start') {
-            const currentLang = languageRef.current;
-            let generator: JavascriptGenerator | PythonGenerator | CppGenerator;
-            if (currentLang === "py") generator = pythonGenerator;
-            else if (currentLang === "cpp") generator = cppGenerator;
-            else generator = javascriptGenerator;
+            // Click-to-Run: ALWAYS use JavaScript simulation regardless of view mode
+            const generator = javascriptGenerator;
 
             // Unlock AudioContext on interaction
             import("@/lib/audio/SimpleSynth").then(({ synth }) => synth.init());
 
             generator.init(ws);
             const code = generator.blockToCode(block) as string;
-            // console.log("DEBUG: Clicked block, generated code:", code);
-            // console.log("DEBUG: Current language:", currentLang);
-            window.dispatchEvent(new CustomEvent("blockly:run_stack", { detail: { code } }));
+
+            window.dispatchEvent(new CustomEvent("blockly:run_stack", {
+              detail: {
+                code,
+                language: 'js',
+                forceLanguage: true
+              }
+            }));
           }
         }
       }
     };
     ws.addChangeListener(onClick);
 
+    // -------- Handle Run Request (Force JS Simulation) --------
+    const onRequestRun = () => {
+      try {
+        // Verify workspace matches host? No need, this component owns the workspace.
+        javascriptGenerator.init(ws);
+        const code = javascriptGenerator.workspaceToCode(ws);
+
+        // Dispatch Run event with forced JS code
+        window.dispatchEvent(new CustomEvent("blockly:run", {
+          detail: {
+            code: code,
+            language: "js",
+            forceLanguage: true
+          }
+        }));
+      } catch (e) {
+        console.error("Failed to generate simulation code", e);
+      }
+    };
+    window.addEventListener("blockly:request_run", onRequestRun);
+
     return () => {
+      window.removeEventListener("blockly:request_run", onRequestRun);
       Blockly.dialog.setPrompt(window.prompt);
       ro.disconnect();
       ws.dispose();
       workspaceRef.current = null;
     };
-  }, [emitCode]);
+  }, [getInitialXml, emitCode]);
 
   // Handle visibility changes (Auto-reset when returning to tab)
   React.useEffect(() => {
@@ -365,81 +384,77 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
   };
 
   return (
-    <div className="relative h-full w-full">
-      <div ref={hostRef} className="blockly-host h-full w-full overflow-hidden bg-white" />
+    <div className="flex h-full w-full overflow-hidden relative">
+      <Toolbox
+        workspace={workspaceState}
+        activeCategory={activeCategory}
+        onCategoryClick={setActiveCategory}
+      />
 
-      <div
-        className="absolute right-4 bottom-28 z-10 flex flex-col gap-2"
-        style={{
-          isolation: "isolate",
-        }}
-      >
+      <div className="flex-1 relative h-full w-full overflow-hidden">
+        <div ref={hostRef} className="blockly-host h-full w-full overflow-hidden bg-white" />
 
-        {/* Reset */}
-        <button
-          type="button"
-          onClick={zoomReset}
-          className="h-11 w-11 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200
-            shadow-[0_10px_25px_rgba(37,99,235,0.15)]
-            hover:bg-blue-100 hover:shadow-[0_14px_30px_rgba(37,99,235,0.2)]
-            active:scale-[0.98] transition grid place-items-center"
-          title="Reset"
+        <div
+          className="absolute right-4 bottom-28 z-10 flex flex-col gap-2"
+          style={{
+            isolation: "isolate",
+          }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" />
-            <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-            <path d="M12 2v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            <path d="M12 18v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            <path d="M2 12h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            <path d="M18 12h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </button>
+
+          {/* Reset */}
+          <button
+            type="button"
+            onClick={zoomReset}
+            className="h-11 w-11 rounded-2xl bg-violet-50 text-violet-600 border border-violet-200
+            shadow-[0_10px_25px_rgba(124,58,237,0.15)]
+            hover:bg-violet-100 hover:shadow-[0_14px_30px_rgba(124,58,237,0.2)]
+            active:scale-[0.98] transition grid place-items-center"
+            title="Reset"
+          >
+            <Image src="/icons/position.png" alt="Reset" width={24} height={24} className="object-contain" />
+          </button>
 
 
-        {/* Zoom in */}
-        <button
-          type="button"
-          onClick={zoomIn}
-          className="h-11 w-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200
+          {/* Zoom in */}
+          <button
+            type="button"
+            onClick={zoomIn}
+            className="h-11 w-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200
                shadow-[0_10px_25px_rgba(5,150,105,0.15)]
                hover:bg-emerald-100 hover:shadow-[0_14px_30px_rgba(5,150,105,0.2)]
                active:scale-[0.98] transition grid place-items-center"
-          title="Zoom in"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M12 5v14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            <path d="M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </button>
+            title="Zoom in"
+          >
+            <Image src="/icons/zoom-in.png" alt="Zoom In" width={24} height={24} className="object-contain" />
+          </button>
 
-        {/* Zoom out */}
-        <button
-          type="button"
-          onClick={zoomOut}
-          className="h-11 w-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200
+          {/* Zoom out */}
+          <button
+            type="button"
+            onClick={zoomOut}
+            className="h-11 w-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200
                shadow-[0_10px_25px_rgba(217,119,6,0.15)]
                hover:bg-amber-100 hover:shadow-[0_14px_30px_rgba(217,119,6,0.2)]
                active:scale-[0.98] transition grid place-items-center"
-          title="Zoom out"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </button>
+            title="Zoom out"
+          >
+            <Image src="/icons/magnifying-glass.png" alt="Zoom Out" width={24} height={24} className="object-contain" />
+          </button>
 
+        </div>
+
+
+        {promptState.isOpen && (
+          <PromptModal
+            key={`${promptState.title}-${promptState.defaultValue}`}
+            isOpen={promptState.isOpen}
+            title={promptState.title}
+            defaultValue={promptState.defaultValue}
+            onConfirm={handlePromptConfirm}
+            onCancel={handlePromptCancel}
+          />
+        )}
       </div>
-
-
-      {promptState.isOpen && (
-        <PromptModal
-          key={`${promptState.title}-${promptState.defaultValue}`}
-          isOpen={promptState.isOpen}
-          title={promptState.title}
-          defaultValue={promptState.defaultValue}
-          onConfirm={handlePromptConfirm}
-          onCancel={handlePromptCancel}
-        />
-      )}
     </div>
   );
 }

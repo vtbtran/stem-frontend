@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
+import NextImage from "next/image";
 import { BlocklyStageMotionEvent, BlocklyStageLookEvent } from "@/types/events";
 
 export default function Stage() {
@@ -55,10 +56,15 @@ export default function Stage() {
                 let duration = 0.4;
 
                 if (typeof value === 'number') {
+                    // Legacy fallback
                     steps = value;
                 } else if (typeof value === 'object' && 'val' in value) {
-                    steps = value.val;
-                    duration = value.dur;
+                    const speed = Math.abs(value.val);
+                    const time = value.dur;
+                    duration = time;
+                    // Calculate distance based on speed * time
+                    // Steps = (Speed * Time) / 10
+                    steps = (speed * time) / 10;
                 }
 
                 // Disable CSS transition, use JS animation instead
@@ -106,7 +112,14 @@ export default function Stage() {
                 let deg = 0;
                 let duration = 0.4;
                 if (typeof value === 'number') { deg = value; }
-                else if (typeof value === 'object' && 'val' in value) { deg = value.val; duration = value.dur; }
+                else if (typeof value === 'object' && 'val' in value) {
+                    const speed = value.val; // Signed speed
+                    const time = value.dur;
+                    duration = time;
+                    // Calculate degrees based on speed * time
+                    // Speed 150 for 0.5s = 75 degrees
+                    deg = (speed * time);
+                }
 
                 setTransitionDuration(0);
                 const durationMs = duration * 1000;
@@ -278,9 +291,11 @@ export default function Stage() {
                         )}
 
                         <div className="w-12 h-12 flex items-center justify-center">
-                            <img
+                            <NextImage
                                 src="/car.svg"
                                 alt="Car sprite"
+                                width={48}
+                                height={48}
                                 className="w-full h-full object-contain drop-shadow-md"
                             />
                         </div>

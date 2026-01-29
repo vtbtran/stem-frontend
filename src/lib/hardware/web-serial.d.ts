@@ -1,6 +1,3 @@
-// Type definitions for Web Serial API
-// https://wicg.github.io/serial/
-
 interface SerialPort extends EventTarget {
   readonly readable: ReadableStream | null;
   readonly writable: WritableStream | null;

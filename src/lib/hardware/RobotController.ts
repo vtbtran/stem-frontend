@@ -1,6 +1,5 @@
 import { ITransport, RobotCommand, TransportType } from "./types";
 import { WebSerialTransport } from "./WebSerialTransport";
-import { BluetoothTransport } from "./BluetoothTransport";
 import { MockTransport } from "./MockTransport";
 import { WifiTransport } from "./WifiTransport";
 
@@ -16,17 +15,21 @@ export class RobotController {
     private readonly DEVICE_SERVO = 0x02; // 2
     private readonly DEVICE_LED = 0x05;   // 5
     private readonly ACTION_SET = 0x01; // Model1_Ctrl
-    
-    // Movement Values
-    private readonly MOVE_STOP = 0x00;
-    private readonly MOVE_FORWARD = 0x01;
-    private readonly MOVE_BACK = 0x02;
-    private readonly MOVE_LEFT = 0x03;
-    private readonly MOVE_RIGHT = 0x04;
-    private readonly MOVE_TOP_LEFT = 0x05;
-    private readonly MOVE_TOP_RIGHT = 0x07;
-    private readonly MOVE_BOTTOM_LEFT = 0x06;
-    private readonly MOVE_BOTTOM_RIGHT = 0x08;
+
+    // Movement Values from Firmware
+    private readonly MOVE_STOP = 0;
+    private readonly MOVE_FORWARD = 163;
+    private readonly MOVE_BACK = 92;
+    private readonly MOVE_LEFT = 106;   // Strafe Left (Turn_Left in firmware)
+    private readonly MOVE_RIGHT = 149;  // Strafe Right (Turn_Right in firmware)
+    private readonly MOVE_TOP_LEFT = 34;
+    private readonly MOVE_TOP_RIGHT = 129;
+    private readonly MOVE_BOTTOM_LEFT = 72;
+    private readonly MOVE_BOTTOM_RIGHT = 20;
+
+    // Rotation Values
+    private readonly ROTATE_LEFT = 83;  // Contrarotate
+    private readonly ROTATE_RIGHT = 172; // Clockwise
 
     private constructor() { }
 
@@ -44,8 +47,6 @@ export class RobotController {
     public async connect(type: TransportType): Promise<boolean> {
         if (type === TransportType.SERIAL) {
             this.transport = new WebSerialTransport();
-        } else if (type === TransportType.BLUETOOTH) {
-            this.transport = new BluetoothTransport();
         } else if (type === TransportType.MOCK) {
             this.transport = new MockTransport();
         } else if (type === TransportType.WIFI) {
@@ -74,34 +75,25 @@ export class RobotController {
         this.isConnected = false;
     }
 
+    public getTransport(): ITransport | null {
+        return this.transport;
+    }
+
     private async sendPacket(device: number, val: number) {
         if (!this.isConnected || !this.transport) return;
 
         // Packet Structure: FF 55 LEN 00 00 00 00 00 00 ACTION DEVICE 00 VAL 00 00 00 00 (Total 17)
-        // Based on firmware parseData index reading:
-        // action = readBuffer(9)
-        // device = readBuffer(10)
-        // val = readBuffer(12)
-        
         const packet = new Uint8Array(17);
         packet[0] = 0xFF; // Header
         packet[1] = 0x55; // Header
-        packet[2] = 0x0E; // Length (arbitrary non-zero to pass dataLen check if any, though loop logic varies)
-        
+        packet[2] = 0x0E; // Length
+
         packet[9] = this.ACTION_SET; // Action
         packet[10] = device; // Device
         packet[12] = val; // Value
 
-        // Check transport capability
-        if (this.transport instanceof WifiTransport) {
-             await (this.transport as WifiTransport).sendBinary(packet);
-        } else {
-             // For Bluetooth/Serial, we might need to send binary too if supported, 
-             // but current interface is string. Sending as hex string or specialized handling needed.
-             // For now, assume this protocol is primarily for the WiFi/ESP32 context.
-             // If legacy text mode is needed, we can add fallback here.
-             console.warn("Binary protocol not fully implemented for non-WiFi transport");
-        }
+        // Send binary data directly via interface
+        await this.transport.sendBinary(packet);
     }
 
     public async sendCommand(cmd: RobotCommand) {
@@ -110,29 +102,39 @@ export class RobotController {
         const DEFAULT_SPEED = 200; // 0-255
 
         if (cmd.type === "motion") {
-            // First, ensure speed is set (optional, usually stateful on robot)
-            await this.sendPacket(this.DEVICE_SPEED, DEFAULT_SPEED);
+            // Ensure speed is set
+            // await this.sendPacket(this.DEVICE_SPEED, DEFAULT_SPEED); // This line is moved inside the move action
 
             if (cmd.action === "move") {
-                let val = 0;
+                let speed = DEFAULT_SPEED;
                 let duration = 0;
+                let direction = this.MOVE_FORWARD;
 
                 if (typeof cmd.value === "object" && cmd.value !== null) {
                     const obj = cmd.value as import("./types").MotionValue;
-                    val = Number(obj.val);
+                    speed = Math.abs(Number(obj.val)); // Speed from block
                     duration = Number(obj.dur) * 1000;
+                    // Direction is implied by function name (Forward/Backward) passed as sign in common.ts? 
+                    // No, common.ts sends {val: speed, dur: t}. We need to know direction.
+                    // Let's assume val is signed? 
+                    // Checking common.ts: moveBackwardTime sends val: -Number(s).
+                    // So val sign determines direction.
+                    direction = Number(obj.val) >= 0 ? this.MOVE_FORWARD : this.MOVE_BACK;
                 } else {
-                    val = Number(cmd.value);
-                    duration = Math.abs(val) * 20; // Rough step to ms estimation
+                    // Legacy support
+                    const val = Number(cmd.value);
+                    speed = DEFAULT_SPEED;
+                    duration = Math.abs(val) * 20;
+                    direction = val >= 0 ? this.MOVE_FORWARD : this.MOVE_BACK;
                 }
 
-                // Determine direction
-                const direction = val >= 0 ? this.MOVE_FORWARD : this.MOVE_BACK;
-                
+                // Set Speed
+                await this.sendPacket(this.DEVICE_SPEED, speed);
+
                 // Send Move Command
                 await this.sendPacket(this.DEVICE_MOTOR, direction);
 
-                // Stop after duration (if duration > 0)
+                // Stop after duration
                 if (duration > 0) {
                     setTimeout(() => {
                         this.sendPacket(this.DEVICE_MOTOR, this.MOVE_STOP);
@@ -140,10 +142,28 @@ export class RobotController {
                 }
 
             } else if (cmd.action === "turn") {
-                const val = Number(cmd.value);
-                const duration = Math.abs(val) * 10; // Rough degree to ms estimation
-                const direction = val >= 0 ? this.MOVE_RIGHT : this.MOVE_LEFT;
+                let speed = DEFAULT_SPEED;
+                let duration = 0;
+                let direction = this.ROTATE_RIGHT;
 
+                if (typeof cmd.value === "object" && cmd.value !== null) {
+                    const obj = cmd.value as import("./types").MotionValue;
+                    speed = Math.abs(Number(obj.val));
+                    duration = Number(obj.dur) * 1000;
+                    // Direction
+                    direction = Number(obj.val) >= 0 ? this.ROTATE_RIGHT : this.ROTATE_LEFT;
+                } else {
+                    // Legacy support
+                    const val = Number(cmd.value);
+                    speed = DEFAULT_SPEED;
+                    duration = Math.abs(val) * 10;
+                    direction = val >= 0 ? this.ROTATE_RIGHT : this.ROTATE_LEFT;
+                }
+
+                // Set Speed
+                await this.sendPacket(this.DEVICE_SPEED, speed);
+
+                // Send Turn Command
                 await this.sendPacket(this.DEVICE_MOTOR, direction);
 
                 if (duration > 0) {
@@ -155,16 +175,16 @@ export class RobotController {
         } else if (cmd.type === "look") {
             // LED Control
             if (cmd.action === "on") {
-                 await this.sendPacket(this.DEVICE_LED, 255); // Max brightness
+                await this.sendPacket(this.DEVICE_LED, 255); // Max brightness
             } else if (cmd.action === "off") {
-                 await this.sendPacket(this.DEVICE_LED, 0);
+                await this.sendPacket(this.DEVICE_LED, 0);
             }
         } else if (cmd.type === "servo") {
             // Servo Control
-             const angle = Number(cmd.value);
-             // Constrain angle 0-180
-             const safeAngle = Math.max(0, Math.min(180, angle));
-             await this.sendPacket(this.DEVICE_SERVO, safeAngle);
+            const angle = Number(cmd.value);
+            // Constrain angle 0-180
+            const safeAngle = Math.max(0, Math.min(180, angle));
+            await this.sendPacket(this.DEVICE_SERVO, safeAngle);
         }
     }
 }

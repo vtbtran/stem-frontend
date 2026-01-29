@@ -14,12 +14,12 @@ export interface ITransport {
     connect(): Promise<boolean>;
     disconnect(): Promise<void>;
     send(data: string): Promise<void>;
+    sendBinary(data: Uint8Array): Promise<void>;
     onReceive(callback: (data: string) => void): void;
 }
 
 export enum TransportType {
     SERIAL = "SERIAL",
-    BLUETOOTH = "BLUETOOTH",
     WIFI = "WIFI",
     MOCK = "MOCK"
 }

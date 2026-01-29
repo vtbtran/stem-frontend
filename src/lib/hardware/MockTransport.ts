@@ -41,6 +41,10 @@ export class MockTransport implements ITransport {
         }, 500);
     }
 
+    async sendBinary(data: Uint8Array): Promise<void> {
+        console.log("Mock Send Binary:", data);
+    }
+
     onReceive(callback: (data: string) => void): void {
         this.onReceiveCallback = callback;
     }

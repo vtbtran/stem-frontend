@@ -1,17 +1,8 @@
-/* =========================================================
-   Blockly custom CSS (scoped)
-   IMPORTANT: host div must have class .blockly-host
-   NOTE:
-   - You are using custom Zoom + custom Trash (Tailwind buttons)
-   - So DO NOT style .blocklyZoom / .blocklyTrash here (Blockly won't render them)
-   ========================================================= */
-
 .blockly-host {
   position: relative;
 }
 
-/* ---------- Tailwind compatibility fixes ---------- */
-/* Tailwind reset can break Blockly SVG sizing/box model */
+
 .blockly-host .blocklySvg,
 .blockly-host .blocklySvg *,
 .blockly-host .blocklyWidgetDiv,
@@ -33,11 +24,223 @@
 }
 
 /* ---------- Toolbox ---------- */
+/* ---------- Toolbox ---------- */
+/* Hide native toolbox as we are using React Custom Toolbox */
 .blockly-host .blocklyToolboxDiv {
-  background-color: #f1f5f9 !important; /* slate-100 */
-  border-right: 1px solid #e2e8f0 !important;
-  box-shadow: 2px 0 8px rgba(2, 6, 23, 0.05);
+  display: none !important;
 }
+
+/* ---------- Toolbox Icons (Material Icons) ---------- */
+/* ---------- Toolbox Icons (Material Icons) ---------- */
+.blocklyTreeRow {
+  height: 44px !important;
+  line-height: 44px !important;
+  padding-left: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Icon Container - target the specific icon span */
+.blocklyTreeRow .blocklyTreeIcon {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 24px !important;
+  height: 24px !important;
+  margin-right: 12px !important;
+  background-color: transparent !important;
+  /* Hide default colored square */
+  border: none !important;
+  font-family: 'Material Icons Round';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  /* Icon size */
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  /* Support for all WebKit browsers. */
+  -webkit-font-smoothing: antialiased;
+  /* Support for Safari and Chrome. */
+  text-rendering: optimizeLegibility;
+  /* Support for Firefox. */
+  -moz-osx-font-smoothing: grayscale;
+  color: #64748b;
+  /* Slate 500 default */
+}
+
+/* Sidebar Interaction States - Tint + Icon Color */
+.blocklyTreeRow {
+  border-left: 4px solid transparent;
+  /* Reserve space for active indicator */
+  padding-left: 8px !important;
+  /* Adjusted for border */
+}
+
+/* specific colors for :has() support */
+/* Control */
+.blocklyTreeRow:has(.category-control):hover,
+.blocklyTreeSelected .blocklyTreeRow:has(.category-control) {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  color: #2563EB !important;
+  border-left-color: #3B82F6;
+}
+
+/* Hardware */
+.blocklyTreeRow:has(.category-hardware):hover,
+.blocklyTreeSelected .blocklyTreeRow:has(.category-hardware) {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+  color: #059669 !important;
+  border-left-color: #10B981;
+}
+
+/* Speech */
+.blocklyTreeRow:has(.category-speech):hover,
+.blocklyTreeSelected .blocklyTreeRow:has(.category-speech) {
+  background-color: rgba(6, 182, 212, 0.1) !important;
+  color: #0891B2 !important;
+  border-left-color: #06B6D4;
+}
+
+/* Sound */
+.blocklyTreeRow:has(.category-sound):hover,
+.blocklyTreeSelected .blocklyTreeRow:has(.category-sound) {
+  background-color: rgba(217, 70, 239, 0.1) !important;
+  color: #C026D3 !important;
+  border-left-color: #D946EF;
+}
+
+/* Logic */
+.blocklyTreeRow:has(.category-logic):hover,
+.blocklyTreeSelected .blocklyTreeRow:has(.category-logic) {
+  background-color: rgba(245, 158, 11, 0.1) !important;
+  color: #D97706 !important;
+  border-left-color: #F59E0B;
+}
+
+/* Loops & Functions */
+.blocklyTreeRow:has(.category-loops):hover,
+.blocklyTreeSelected .blocklyTreeRow:has(.category-loops),
+.blocklyTreeRow:has(.category-functions):hover,
+.blocklyTreeSelected .blocklyTreeRow:has(.category-functions) {
+  background-color: rgba(139, 92, 246, 0.1) !important;
+  color: #7C3AED !important;
+  border-left-color: #8B5CF6;
+}
+
+/* Math */
+.blocklyTreeRow:has(.category-math):hover,
+.blocklyTreeSelected .blocklyTreeRow:has(.category-math) {
+  background-color: rgba(244, 63, 94, 0.1) !important;
+  color: #E11D48 !important;
+  border-left-color: #F43F5E;
+}
+
+/* Text */
+.blocklyTreeRow:has(.category-text):hover,
+.blocklyTreeSelected .blocklyTreeRow:has(.category-text) {
+  background-color: rgba(249, 115, 22, 0.1) !important;
+  color: #C2410C !important;
+  border-left-color: #F97316;
+}
+
+/* Lists */
+.blocklyTreeRow:has(.category-lists):hover,
+.blocklyTreeSelected .blocklyTreeRow:has(.category-lists) {
+  background-color: rgba(99, 102, 241, 0.1) !important;
+  color: #4338CA !important;
+  border-left-color: #6366F1;
+}
+
+/* Variables */
+.blocklyTreeRow:has(.category-variables):hover,
+.blocklyTreeSelected .blocklyTreeRow:has(.category-variables) {
+  background-color: rgba(244, 63, 94, 0.1) !important;
+  color: #BE123C !important;
+  border-left-color: #F43F5E;
+}
+
+/* Category Specific Icons - Image Integration */
+.blocklyTreeIcon.category-control,
+.blocklyTreeIcon.category-hardware,
+.blocklyTreeIcon.category-speech,
+.blocklyTreeIcon.category-sound {
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 20px;
+}
+
+.blocklyTreeIcon.category-control {
+  background-image: url("/icons/control-system.png");
+}
+
+.blocklyTreeIcon.category-hardware {
+  background-image: url("/icons/desk-lamp.png");
+}
+
+.blocklyTreeIcon.category-speech {
+  background-image: url("/icons/conversation.png");
+}
+
+.blocklyTreeIcon.category-sound {
+  background-image: url("/icons/speaker-filled-audio-tool.png");
+}
+
+/* Remove pseudo-elements for image icons */
+.blocklyTreeIcon.category-control::before,
+.blocklyTreeIcon.category-hardware::before,
+.blocklyTreeIcon.category-speech::before,
+.blocklyTreeIcon.category-sound::before {
+  content: none !important;
+  display: none !important;
+}
+
+/* Logic & Loops - Secondary Group */
+.blocklyTreeIcon.category-logic::before {
+  content: "share";
+  color: #FBBF24;
+}
+
+/* Logic - Amber-400 */
+.blocklyTreeIcon.category-loops::before {
+  content: "loop";
+  color: #A78BFA;
+}
+
+/* Vòng lặp - Violet-400 */
+.blocklyTreeIcon.category-math::before {
+  content: "calculate";
+  color: #FB7185;
+}
+
+/* Toán học - Rose-400 */
+.blocklyTreeIcon.category-text::before {
+  content: "text_fields";
+  color: #F97316;
+}
+
+/* Văn bản - Orange-500 */
+.blocklyTreeIcon.category-lists::before {
+  content: "list";
+  color: #F97316;
+}
+
+/* Danh sách - Match Text */
+.blocklyTreeIcon.category-variables::before {
+  content: "data_usage";
+  color: #F97316;
+}
+
+/* Biến - Match Text */
+.blocklyTreeIcon.category-functions::before {
+  content: "functions";
+  color: #A78BFA;
+}
+
+/* Hàm - Match Loops */
 
 /* ---------- Flyout ---------- */
 .blockly-host .blocklyFlyoutBackground {
@@ -52,7 +255,8 @@
 
 /* Flyout scrollbar */
 .blockly-host .blocklyFlyout .blocklyScrollbarHandle {
-  fill: #cbd5e1 !important; /* slate-300 */
+  fill: #cbd5e1 !important;
+  /* slate-300 */
 }
 
 .blockly-host .blocklyScrollbarHandle {
