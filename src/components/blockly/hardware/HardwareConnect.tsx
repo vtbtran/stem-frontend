@@ -78,12 +78,12 @@ export default function HardwareConnect() {
         disabled={isConnecting}
         title={isConnected ? 'Ngắt kết nối' : 'Cấu hình kết nối'}
         className={`
-          h-10 px-4 rounded-xl font-semibold text-sm flex items-center gap-2 transition-all duration-200 shadow-sm border border-transparent
+          h-9 px-3 rounded-lg font-bold text-sm flex items-center gap-2 transition-all duration-200 shadow-sm border
           ${isConnected
-            ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200 hover:bg-emerald-100' // Keep connected state distinct but cleaner
-            : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-600/25 active:scale-[0.98]' // Primary Action
+            ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'
+            : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900'
           }
-          ${isConnecting ? 'opacity-80 cursor-wait' : ''}
+          ${isConnecting ? 'opacity-75 cursor-wait' : ''}
         `}
       >
         {isConnecting ? (
