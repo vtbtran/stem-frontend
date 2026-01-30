@@ -5,9 +5,12 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import { CodePanel, RightPanel } from "./editor";
 import { Stage, RunnerIframe } from "./simulation";
 import { HardwareConnect, CameraWindow } from "./hardware";
+import { BlockSuggestionAI } from "./workspace";
 import { motion } from "framer-motion";
 import { synth } from "@/lib/audio/SimpleSynth";
-import { BlocklyCodeEvent, BlocklyStageSoundEvent } from "@/types/events";
+import { BlocklyCodeEvent } from "@/types/events";
+import { useSimulationEvents } from "@/hooks/useSimulationEvents";
+import { useTerminalLog } from "@/hooks/useTerminalLog";
 
 const BlocklyWorkspace = dynamic(() => import("./workspace/BlocklyWorkspace"), { ssr: false });
 import { RobotController } from "@/lib/hardware/RobotController";
@@ -23,8 +26,12 @@ export default function BlocklyEditor() {
   });
   const [isMounted, setIsMounted] = useState(false);
   const [isStageMinimized, setIsStageMinimized] = useState(false);
-  const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
+
+  // Custom Hook for Terminal Logs
+  const { terminalLogs } = useTerminalLog();
+
   const [rightPanelTab, setRightPanelTab] = useState<"terminal" | "ai">("terminal");
+  const [showAISuggestion, setShowAISuggestion] = useState(false);
   const simElementRef = useRef<HTMLDivElement>(null);
   const activeAreaRef = useRef<HTMLDivElement>(null);
 
@@ -89,78 +96,18 @@ export default function BlocklyEditor() {
 
   const getCode = useCallback(() => latestCodeRef.current, []);
 
-  useEffect(() => {
+  // --- Custom Hooks for Event Handling ---
+  useSimulationEvents();
 
+  useEffect(() => {
     const onCode = (e: BlocklyCodeEvent) => {
       const ce = e;
       setCode(ce.detail.code ?? "");
     };
 
-    const onSound = (e: BlocklyStageSoundEvent) => {
-      const ce = e;
-      const { action, value } = ce.detail;
-      // console.log("BlocklyEditor: Received sound event", action, value);
-      if (action === "beep") {
-        synth.beep();
-        RobotController.getInstance().sendCommand({ type: "sound", action: "beep" });
-      }
-      if (action === "tone" && value) {
-        synth.playTone(value.freq, value.dur);
-        RobotController.getInstance().sendCommand({ type: "sound", action: "tone", value });
-      }
-    };
-
-    const onMotion = (e: CustomEvent) => {
-      const detail = e.detail;
-      if (detail.type === "MOTION_MOVE") {
-        RobotController.getInstance().sendCommand({ type: "motion", action: "move", value: detail.value });
-      } else if (detail.type === "MOTION_TURN") {
-        RobotController.getInstance().sendCommand({ type: "motion", action: "turn", value: detail.value });
-      }
-    };
-
-    const onLook = (e: CustomEvent) => {
-      const detail = e.detail;
-      if (detail.action === "on" || detail.action === "off") {
-        RobotController.getInstance().sendCommand({ type: "look", action: detail.action });
-      }
-    };
-
-    const onServo = (e: CustomEvent) => {
-      const detail = e.detail;
-      RobotController.getInstance().sendCommand({ type: "servo", action: "set", value: detail.value });
-    };
-
-    // Capture terminal logs for AI context
-    const onTerminalLog = (e: Event) => {
-      const ce = e as CustomEvent<{ args: unknown[] }>;
-      const message = ce.detail.args.map(arg =>
-        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-      ).join(" ");
-      setTerminalLogs(prev => [...prev.slice(-50), message]); // Keep last 50 logs
-    };
-
-    const onTerminalError = (e: Event) => {
-      const ce = e as CustomEvent<{ error: string }>;
-      setTerminalLogs(prev => [...prev.slice(-50), `[ERROR] ${ce.detail.error}`]);
-    };
-
     window.addEventListener("blockly:code", onCode);
-    window.addEventListener("blockly:stage_sound", onSound);
-    window.addEventListener("blockly:stage_motion", onMotion as EventListener);
-    window.addEventListener("blockly:stage_look", onLook as EventListener);
-    window.addEventListener("blockly:stage_servo", onServo as EventListener);
-    window.addEventListener("blockly:log", onTerminalLog);
-    window.addEventListener("blockly:error", onTerminalError);
-
     return () => {
       window.removeEventListener("blockly:code", onCode);
-      window.removeEventListener("blockly:stage_sound", onSound);
-      window.removeEventListener("blockly:stage_motion", onMotion as EventListener);
-      window.removeEventListener("blockly:stage_look", onLook as EventListener);
-      window.removeEventListener("blockly:stage_servo", onServo as EventListener);
-      window.removeEventListener("blockly:log", onTerminalLog);
-      window.removeEventListener("blockly:error", onTerminalError);
     };
   }, []);
 
@@ -192,6 +139,11 @@ export default function BlocklyEditor() {
 
         {showCamera && <CameraWindow onClose={() => setShowCamera(false)} />}
 
+        {/* AI Block Suggestions Panel */}
+        <BlockSuggestionAI
+          isOpen={showAISuggestion}
+          onClose={() => setShowAISuggestion(false)}
+        />
         {/* STAGE DOCK (Fixed Top-Right) */}
         <div
           ref={simElementRef}
@@ -236,45 +188,81 @@ export default function BlocklyEditor() {
         </div>
 
         <div className={`flex-1 w-full ${showPanel ? "hidden" : "flex flex-col"} animate-in fade-in duration-300 relative`}>
-          {/* DESIGN MODE HEADER */}
-          <div className="h-14 flex items-center justify-between px-6 bg-white/80 backdrop-blur-xl border-b border-zinc-200/50 z-[60] sticky top-0 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2.5">
-                <div className="flex items-baseline leading-none select-none">
-                  <span className="text-4xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-zinc-300 via-zinc-500 to-zinc-400 drop-shadow-sm mr-0.5">Onyx</span>
-                  <span className="text-2xl font-black italic text-zinc-900 tracking-tight">Block</span>
+          {/* PROFESSIONAL TOOLBAR HEADER */}
+          <header className="h-16 flex items-center justify-between px-6 bg-white border-b border-zinc-200 z-[60] sticky top-0">
+            {/* 1. Brand Section */}
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2 select-none group cursor-pointer">
+                <div className="w-8 h-8 rounded-lg bg-zinc-900 text-white flex items-center justify-center font-bold text-lg shadow-sm group-hover:bg-blue-600 transition-colors">
+                  O
+                </div>
+                <div className="flex flex-col leading-none">
+                  <span className="text-zinc-900 font-bold text-lg tracking-tight group-hover:text-blue-600 transition-colors">OnyxBlock</span>
+                  <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider group-hover:text-blue-400 transition-colors">Studio v1.0</span>
                 </div>
               </div>
 
+              {/* Separator */}
+              <div className="h-6 w-[1px] bg-zinc-200" />
+
+              {/* Project Status Badge */}
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-50 border border-zinc-200/60 hover:border-zinc-300 transition-colors cursor-pointer group/status">
+                <div className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)] group-hover/status:scale-110 transition-transform"></div>
+                <span className="text-xs font-medium text-zinc-600 group-hover/status:text-zinc-900 transition-colors">Chưa lưu thiết kế</span>
+              </div>
             </div>
 
+            {/* 2. Actions Toolbar */}
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowCamera(!showCamera)}
-                className={`h-9 px-3 rounded-lg font-medium text-sm flex items-center gap-2 transition-all duration-200 ${showCamera ? 'bg-red-50 text-red-600 ring-1 ring-red-200' : 'bg-white text-zinc-600 hover:bg-zinc-50 ring-1 ring-zinc-200 shadow-sm'}`}
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
-                </svg>
-                <span>Camera</span>
-              </button>
+              {/* Secondary Buttons Group */}
+              <div className="flex items-center bg-zinc-50 p-1 rounded-xl border border-zinc-200/60">
+                {/* AI Assistant Button */}
+                <button
+                  onClick={() => setShowAISuggestion(!showAISuggestion)}
+                  className={`h-9 px-3 rounded-lg text-sm font-medium flex items-center gap-2 transition-all duration-200 ${showAISuggestion
+                      ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
+                      : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-200/50'
+                    }`}
+                  title="AI Trợ lý"
+                >
+                  <span className="text-lg">✨</span>
+                  <span>AI Trợ lý</span>
+                </button>
 
-              <HardwareConnect />
+                <div className="w-[1px] h-4 bg-zinc-200 mx-1"></div>
 
-              <div className="h-4 w-[1px] bg-zinc-200 mx-1" />
+                {/* Camera Button */}
+                <button
+                  onClick={() => setShowCamera(!showCamera)}
+                  className={`h-9 px-3 rounded-lg text-sm font-medium flex items-center gap-2 transition-all duration-200 ${showCamera
+                      ? 'bg-white text-red-600 shadow-sm ring-1 ring-black/5'
+                      : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-200/50'
+                    }`}
+                  title="Mở Camera Robot"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                  </svg>
+                  <span>Camera</span>
+                </button>
+              </div>
 
-
+              {/* Code Button (Secondary) */}
               <button
                 onClick={() => setShowPanel(true)}
-                className="h-9 pl-3 pr-4 rounded-lg bg-white text-zinc-600 font-bold text-sm flex items-center gap-2 border border-zinc-200 shadow-sm hover:bg-zinc-50 hover:text-zinc-900 hover:border-zinc-300 active:scale-[0.98] transition-all duration-200 group"
+                className="h-10 px-4 rounded-xl font-semibold text-sm bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 hover:border-zinc-300 active:scale-[0.98] transition-all duration-200 flex items-center gap-2 shadow-sm"
               >
-                <span>Code</span>
-                <svg className="w-4 h-4 text-zinc-400 group-hover:text-zinc-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                 </svg>
+                <span>Xem Code</span>
               </button>
+
+              {/* Primary Connect Button */}
+              <HardwareConnect />
+
             </div>
-          </div>
+          </header>
 
           <div className="flex-1 min-h-0 relative" ref={!showPanel ? activeAreaRef : null}>
             <BlocklyWorkspace
@@ -385,8 +373,8 @@ export default function BlocklyEditor() {
               <button
                 onClick={() => setRightPanelTab("ai")}
                 className={`h-10 px-4 rounded-xl text-xs font-bold uppercase tracking-wider active:scale-[0.98] transition-all flex items-center gap-2 ${rightPanelTab === "ai"
-                    ? "bg-blue-600/20 text-blue-400 ring-1 ring-blue-500/50"
-                    : "bg-transparent border border-slate-600 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                  ? "bg-blue-600/20 text-blue-400 ring-1 ring-blue-500/50"
+                  : "bg-transparent border border-slate-600 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
                   }`}
               >
                 <span>🤖</span>

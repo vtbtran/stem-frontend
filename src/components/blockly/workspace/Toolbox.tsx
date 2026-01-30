@@ -1,7 +1,6 @@
 import React from 'react';
 import * as Blockly from 'blockly';
 import { TOOLBOX_CONFIG, CustomCategory } from './toolboxConfig';
-import Image from 'next/image';
 
 interface ToolboxProps {
     workspace: Blockly.WorkspaceSvg | null;
@@ -10,18 +9,19 @@ interface ToolboxProps {
     onCategoryClick: (categoryName: string) => void;
 }
 
-const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-    "control-category": { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-500" },
-    "hardware-category": { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-500" },
-    "speech-category": { bg: "bg-cyan-50", text: "text-cyan-700", border: "border-cyan-500" },
-    "sound-category": { bg: "bg-fuchsia-50", text: "text-fuchsia-700", border: "border-fuchsia-500" },
-    "logic-category": { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-500" },
-    "loops-category": { bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-500" },
-    "math-category": { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-500" },
-    "text-category": { bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-500" },
-    "list-category": { bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-500" },
-    "variable-category": { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-500" },
-    "function-category": { bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-500" },
+// Define color themes for each category style
+const CATEGORY_THEMES: Record<string, { activeBg: string; activeText: string; activeRing: string }> = {
+    "control-category": { activeBg: "bg-blue-50", activeText: "text-blue-600", activeRing: "ring-blue-100" },
+    "hardware-category": { activeBg: "bg-emerald-50", activeText: "text-emerald-600", activeRing: "ring-emerald-100" },
+    "speech-category": { activeBg: "bg-cyan-50", activeText: "text-cyan-600", activeRing: "ring-cyan-100" },
+    "sound-category": { activeBg: "bg-fuchsia-50", activeText: "text-fuchsia-600", activeRing: "ring-fuchsia-100" },
+    "logic-category": { activeBg: "bg-amber-50", activeText: "text-amber-600", activeRing: "ring-amber-100" },
+    "loops-category": { activeBg: "bg-violet-50", activeText: "text-violet-600", activeRing: "ring-violet-100" },
+    "math-category": { activeBg: "bg-rose-50", activeText: "text-rose-600", activeRing: "ring-rose-100" },
+    "text-category": { activeBg: "bg-orange-50", activeText: "text-orange-600", activeRing: "ring-orange-100" },
+    "list-category": { activeBg: "bg-indigo-50", activeText: "text-indigo-600", activeRing: "ring-indigo-100" },
+    "variable-category": { activeBg: "bg-rose-50", activeText: "text-rose-600", activeRing: "ring-rose-100" },
+    "function-category": { activeBg: "bg-violet-50", activeText: "text-violet-600", activeRing: "ring-violet-100" },
 };
 
 export const Toolbox: React.FC<ToolboxProps> = ({ workspace, className, activeCategory, onCategoryClick }) => {
@@ -36,7 +36,6 @@ export const Toolbox: React.FC<ToolboxProps> = ({ workspace, className, activeCa
         const toolbox = workspace.getToolbox() as Blockly.Toolbox;
         if (toolbox && toolbox.getToolboxItems) {
             const item = toolbox.getToolboxItems().find((i) => {
-                // Check if 'getName' exists and is callable on this item
                 const itemWithName = i as Blockly.IToolboxItem & { getName?: () => string };
                 return typeof itemWithName.getName === 'function' && itemWithName.getName() === category.name;
             });
@@ -47,25 +46,30 @@ export const Toolbox: React.FC<ToolboxProps> = ({ workspace, className, activeCa
     };
 
     return (
-        <div className={`flex flex-col w-48 bg-white border-r border-slate-200 h-full overflow-y-auto ${className}`}>
+        <div className={`flex flex-col w-56 bg-white border-r border-slate-200 h-full overflow-y-auto py-4 px-3 gap-1 ${className}`}>
             {categories.map((cat, index) => {
-                const style = CATEGORY_COLORS[cat.categorystyle || ""] || { bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-400" };
                 const isActive = activeCategory === cat.name;
+                // Get theme or default to blue if not found
+                const theme = CATEGORY_THEMES[cat.categorystyle || ""] || CATEGORY_THEMES["control-category"];
 
                 return (
                     <button
                         key={index}
                         onClick={() => handleClick(cat)}
                         className={`
-              flex items-center px-3 py-3 w-full text-left transition-all duration-200 border-l-[3px]
-              ${isActive ? `${style.bg} ${style.text} ${style.border}` : 'hover:bg-slate-50 text-slate-600 border-transparent'}
-            `}
+                            flex items-center w-full text-left transition-all duration-200
+                            h-11 px-3 rounded-xl
+                            ${isActive
+                                ? `${theme.activeBg} ${theme.activeText} shadow-sm ring-1 ${theme.activeRing}`
+                                : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                            }
+                        `}
                     >
                         {/* Icon */}
-                        <div className="flex-shrink-0 w-6 h-6 mr-3 relative flex items-center justify-center">
+                        <div className={`flex-shrink-0 w-5 h-5 mr-3 relative flex items-center justify-center transition-colors ${isActive ? 'text-current' : 'text-slate-500'}`}>
                             {cat.imageUrl ? (
                                 <div
-                                    className="w-6 h-6 bg-current transition-colors duration-200"
+                                    className="w-5 h-5 bg-current transition-colors duration-200"
                                     style={{
                                         maskImage: `url("${cat.imageUrl}")`,
                                         maskRepeat: 'no-repeat',
@@ -79,13 +83,13 @@ export const Toolbox: React.FC<ToolboxProps> = ({ workspace, className, activeCa
                                 />
                             ) : (
                                 <span className="material-icons-round text-lg">
-                                    {isActive ? 'radio_button_checked' : 'radio_button_unchecked'}
+                                    {cat.cssConfig?.icon || (isActive ? 'radio_button_checked' : 'radio_button_unchecked')}
                                 </span>
                             )}
                         </div>
 
                         {/* Label */}
-                        <span className={`text-sm ${isActive ? 'font-bold' : 'font-medium'}`}>
+                        <span className={`text-sm tracking-wide ${isActive ? 'font-semibold' : 'font-medium'}`}>
                             {cat.name}
                         </span>
                     </button>

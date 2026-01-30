@@ -78,12 +78,12 @@ export default function HardwareConnect() {
         disabled={isConnecting}
         title={isConnected ? 'Ngắt kết nối' : 'Cấu hình kết nối'}
         className={`
-          h-9 px-3 rounded-lg font-bold text-sm flex items-center gap-2 transition-all duration-200 shadow-sm
+          h-10 px-4 rounded-xl font-semibold text-sm flex items-center gap-2 transition-all duration-200 shadow-sm border border-transparent
           ${isConnected
-            ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200 hover:bg-emerald-100'
-            : 'bg-white text-zinc-600 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:text-zinc-900'
+            ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200 hover:bg-emerald-100' // Keep connected state distinct but cleaner
+            : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-600/25 active:scale-[0.98]' // Primary Action
           }
-          ${isConnecting ? 'opacity-75 cursor-wait' : ''}
+          ${isConnecting ? 'opacity-80 cursor-wait' : ''}
         `}
       >
         {isConnecting ? (
@@ -102,98 +102,145 @@ export default function HardwareConnect() {
         <span>{isConnected ? 'Đã kết nối' : 'Kết nối'}</span>
       </button>
 
-      {/* Connection Config Popup */}
+      {/* Connection Config Popover */}
       <AnimatePresence>
         {showConfig && !isConnected && (
-          <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="absolute top-full right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-zinc-200 z-[9999] overflow-hidden"
-          >
-            {/* Header */}
-            <div className="px-4 py-3 border-b border-zinc-100">
-              <h3 className="text-sm font-bold text-zinc-800 uppercase tracking-wide">Cấu hình kết nối</h3>
-            </div>
+          <>
+            {/* Invisible Backdrop (optional if we rely on click-outside) */}
 
-            {/* Content */}
-            <div className="p-4 space-y-4">
-              {/* Method Selector */}
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-zinc-500">Phương thức</label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setTransportType(TransportType.SERIAL)}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg border transition-all duration-150 ${
-                      transportType === TransportType.SERIAL
-                        ? 'bg-blue-50 border-blue-500 text-blue-700'
-                        : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50'
-                    }`}
-                  >
-                    <div className="w-4 h-4 bg-current" style={{ maskImage: 'url("/icons/usb.png")', maskSize: 'contain', maskRepeat: 'no-repeat', maskPosition: 'center', WebkitMaskImage: 'url("/icons/usb.png")', WebkitMaskSize: 'contain', WebkitMaskRepeat: 'no-repeat', WebkitMaskPosition: 'center' }} />
-                    <span className="font-semibold text-sm">USB</span>
-                  </button>
+            <motion.div
+              initial={{ opacity: 0, y: 8, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.96 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="absolute top-full right-0 mt-3 w-80 bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] ring-1 ring-slate-200 z-[9999] origin-top-right overflow-visible"
+            >
+              {/* Caret (Triangle) */}
+              <div className="absolute -top-1.5 right-4 w-3 h-3 bg-white border-t border-l border-slate-200 rotate-45 z-0" />
 
-                  <button
-                    onClick={() => setTransportType(TransportType.WIFI)}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg border transition-all duration-150 ${
-                      transportType === TransportType.WIFI
-                        ? 'bg-blue-50 border-blue-500 text-blue-700'
-                        : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50'
-                    }`}
-                  >
-                    <div className="w-4 h-4 bg-current" style={{ maskImage: 'url("/icons/radio.png")', maskSize: 'contain', maskRepeat: 'no-repeat', maskPosition: 'center', WebkitMaskImage: 'url("/icons/radio.png")', WebkitMaskSize: 'contain', WebkitMaskRepeat: 'no-repeat', WebkitMaskPosition: 'center' }} />
-                    <span className="font-semibold text-sm">Wi-Fi</span>
-                  </button>
+              <div className="relative z-10 flex flex-col p-5">
+                {/* Header */}
+                <div className="mb-5">
+                  <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                    Cấu hình kết nối
+                    <span className="px-2 py-0.5 rounded-full bg-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">Settings</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">Chọn phương thức giao tiếp với Onyx Robot của bạn.</p>
                 </div>
+
+                {/* Method Selector (Segmented Control) */}
+                <div className="mb-5 space-y-2">
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block ml-1">Phương thức</label>
+                  <div className="flex bg-slate-100 p-1 rounded-xl">
+                    <button
+                      onClick={() => setTransportType(TransportType.SERIAL)}
+                      className={`flex-1 flex items-center justify-center gap-2 h-10 rounded-lg transition-all duration-200 font-semibold text-sm ${transportType === TransportType.SERIAL
+                          ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
+                          : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                        }`}
+                    >
+                      <div className="w-4 h-4 bg-current" style={{ maskImage: 'url("/icons/usb.png")', maskSize: 'contain', maskRepeat: 'no-repeat', maskPosition: 'center', WebkitMaskImage: 'url("/icons/usb.png")', WebkitMaskSize: 'contain', WebkitMaskRepeat: 'no-repeat', WebkitMaskPosition: 'center' }} />
+                      USB
+                    </button>
+
+                    <button
+                      onClick={() => setTransportType(TransportType.WIFI)}
+                      className={`flex-1 flex items-center justify-center gap-2 h-10 rounded-lg transition-all duration-200 font-semibold text-sm ${transportType === TransportType.WIFI
+                          ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
+                          : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                        }`}
+                    >
+                      <div className="w-4 h-4 bg-current" style={{ maskImage: 'url("/icons/radio.png")', maskSize: 'contain', maskRepeat: 'no-repeat', maskPosition: 'center', WebkitMaskImage: 'url("/icons/radio.png")', WebkitMaskSize: 'contain', WebkitMaskRepeat: 'no-repeat', WebkitMaskPosition: 'center' }} />
+                      Wi-Fi
+                    </button>
+                  </div>
+                </div>
+
+                {/* Dynamic Content Area */}
+                <div className="mb-6 min-h-[60px]">
+                  <AnimatePresence mode="wait">
+                    {transportType === TransportType.SERIAL ? (
+                      <motion.div
+                        key="serial"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 10 }}
+                        transition={{ duration: 0.15 }}
+                        className="p-3 bg-slate-50 border border-slate-100 rounded-xl"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 text-blue-600">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold text-slate-700">Serial Port</h4>
+                            <p className="text-[11px] text-slate-500 leading-relaxed mt-0.5">
+                              Kết nối trực tiếp qua cáp USB. Đảm bảo driver CH340 đã được cài đặt.
+                            </p>
+                            <div className="mt-2 flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                              <span className="text-[10px] font-medium text-slate-400">Chưa chọn thiết bị</span>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="wifi"
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.15 }}
+                        className="space-y-3"
+                      >
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">IP Address</label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={ipAddress}
+                              onChange={(e) => setIpAddress(e.target.value)}
+                              placeholder="192.168.4.1"
+                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono text-slate-700 font-bold placeholder:font-normal placeholder:text-slate-300 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm"
+                            />
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" title="Ready to scan" />
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-slate-400 pl-1">
+                          * Nhập địa chỉ IP hiển thị trên màn hình OLED của Robot.
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Footer Actions */}
+                <button
+                  onClick={handleConnect}
+                  disabled={isConnecting || (transportType === TransportType.WIFI && !ipAddress)}
+                  className="w-full h-11 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-100 disabled:text-slate-400 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-600/20 hover:shadow-blue-600/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                >
+                  {isConnecting ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin text-current" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span>Đang kết nối...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Kết nối ngay</span>
+                      <svg className="w-4 h-4 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                    </>
+                  )}
+                </button>
               </div>
-
-              {/* Wi-Fi Settings */}
-              <AnimatePresence>
-                {transportType === TransportType.WIFI && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-zinc-500">Địa chỉ IP Robot</label>
-                      <input
-                        type="text"
-                        value={ipAddress}
-                        onChange={(e) => setIpAddress(e.target.value)}
-                        placeholder="192.168.4.1"
-                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm font-mono text-zinc-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Connect Button */}
-              <button
-                onClick={handleConnect}
-                disabled={isConnecting}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-              >
-                {isConnecting ? (
-                  <>
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    <span>Đang kết nối...</span>
-                  </>
-                ) : (
-                  <span>Kết nối {transportType === TransportType.SERIAL ? 'USB' : 'Wi-Fi'}</span>
-                )}
-              </button>
-            </div>
-          </motion.div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>
   );
 }
-
