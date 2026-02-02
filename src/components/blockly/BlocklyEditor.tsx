@@ -6,14 +6,13 @@ import { CodePanel, RightPanel } from "./editor";
 import { Stage, RunnerIframe } from "./simulation";
 import { HardwareConnect, CameraWindow } from "./hardware";
 import { BlockSuggestionAI } from "./workspace";
-import { motion } from "framer-motion";
 import { synth } from "@/lib/audio/SimpleSynth";
 import { BlocklyCodeEvent } from "@/types/events";
 import { useSimulationEvents } from "@/hooks/useSimulationEvents";
 import { useTerminalLog } from "@/hooks/useTerminalLog";
+import Toast, { ToastType } from "../ui/Toast";
 
 const BlocklyWorkspace = dynamic(() => import("./workspace/BlocklyWorkspace"), { ssr: false });
-import { RobotController } from "@/lib/hardware/RobotController";
 
 export default function BlocklyEditor() {
   const [code, setCode] = useState<string>("");
@@ -34,6 +33,8 @@ export default function BlocklyEditor() {
   const [showAISuggestion, setShowAISuggestion] = useState(false);
   const simElementRef = useRef<HTMLDivElement>(null);
   const activeAreaRef = useRef<HTMLDivElement>(null);
+  
+  const [toast, setToast] = useState<{message: string, type: ToastType} | null>(null);
 
 
   const getSimBoundaries = useCallback(() => {
@@ -112,24 +113,41 @@ export default function BlocklyEditor() {
   }, []);
 
   const onRun = useCallback(() => {
+    // Basic validation for C++ empty code
+    if (language === 'cpp') {
+      const codeToCheck = latestCodeRef.current || "";
+      // Check if both setup and loop are effectively empty (ignoring whitespace inside {})
+      // Regex matches: void setup() { [whitespace] }
+      const isSetupEmpty = /void\s+setup\s*\(\s*\)\s*\{\s*\}/.test(codeToCheck);
+      const isLoopEmpty = /void\s+loop\s*\(\s*\)\s*\{\s*\}/.test(codeToCheck);
+
+      if (isSetupEmpty && isLoopEmpty) {
+        setToast({
+          message: "Chưa có code! Vui lòng viết code vào hàm setup hoặc loop trước khi chạy.",
+          type: "error"
+        });
+        return;
+      }
+    }
+
     synth.init();
     if (!showPanel) setShowPanel(true);
     // Request BlocklyWorkspace to generate latest code (as JS) and run it
     window.dispatchEvent(new CustomEvent("blockly:request_run"));
-  }, [showPanel]);
+  }, [showPanel, language]);
 
   const getInitialXml = useCallback(() => xmlRef.current, []);
   const handleXmlChange = useCallback((xml: string) => { xmlRef.current = xml; }, []);
 
-  const saveSimSize = () => {
-    if (simElementRef.current) {
-      // ... existing saveSimSize content ...
-      const rect = simElementRef.current.getBoundingClientRect();
-      const newState = { w: rect.width, h: rect.height };
-      setSimState(newState);
-      localStorage.setItem("sim-pos", JSON.stringify(newState));
-    }
-  };
+  // const saveSimSize = () => {
+  //   if (simElementRef.current) {
+  //     // ... existing saveSimSize content ...
+  //     const rect = simElementRef.current.getBoundingClientRect();
+  //     const newState = { w: rect.width, h: rect.height };
+  //     setSimState(newState);
+  //     localStorage.setItem("sim-pos", JSON.stringify(newState));
+  //   }
+  // };
 
   return (
 
@@ -318,6 +336,7 @@ export default function BlocklyEditor() {
                         await port.open({ baudRate: 115200 });
                       } catch (e) {
                         alert("Please connect a device first.");
+                        console.error("No port selected:", e);
                         return;
                       }
                     }
@@ -389,7 +408,12 @@ export default function BlocklyEditor() {
           </div>
         </div>
       </div>
+      <Toast 
+        message={toast?.message || ""} 
+        type={toast?.type} 
+        isVisible={!!toast} 
+        onClose={() => setToast(null)} 
+      />
     </div>
   );
 }
-
