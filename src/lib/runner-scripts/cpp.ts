@@ -51,6 +51,11 @@ export const CPP_SCRIPT = `
         try {
           \${jsCode}
         } catch (e) {
+          // Nếu là lỗi dừng chủ động, không in log lỗi ra console
+          if (String(e).includes("STOP_REQUESTED")) {
+            console.log("C++ Simulation: Stopped by user.");
+            return;
+          }
           console.error(e);
           parent.postMessage({ type: "blockly_error", error: String(e) }, "*");
         }

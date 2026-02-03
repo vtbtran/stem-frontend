@@ -51,8 +51,8 @@ export const defineControlBlocks = () => {
     // Generator - JS (Async Safe)
     javascriptGenerator.forBlock['control_forever'] = function (block: Blockly.Block) {
         const branch = javascriptGenerator.statementToCode(block, 'DO');
-        // Inject a small delay to prevent browser freeze and allow UI updates
-        return `while (true) {\n${branch}  await new Promise(r => setTimeout(r, 10));\n}\n`;
+        // Thêm checkStop() vào ngay đầu mỗi vòng lặp
+        return `while (!window.isStopped) {\n${branch}  await window.delay(10);\n}\n`;
     };
 
     // Generator - Python (Async Safe)
@@ -80,18 +80,17 @@ export const defineControlBlocks = () => {
         }
     };
 
-    javascriptGenerator.forBlock['control_stop'] = function (block: Blockly.Block) {
-        return "throw 'STOP';\n";
-    };
-
+javascriptGenerator.forBlock['control_stop'] = function (block: Blockly.Block) {
+   
+    return "window.postMessage({ type: 'stop' }, '*');\nthrow 'STOP';\n";
+};
     pythonGenerator.forBlock['control_stop'] = function (block: Blockly.Block) {
         return "raise Exception('STOP')\n";
     };
 
     (cppGenerator as any).forBlock['control_stop'] = function (block: Blockly.Block) {
-        return "return;\n";
+        return "window.isStopped = true;\nreturn;\n";
     };
-
     // Command: Wait
     Blockly.Blocks['control_wait'] = {
         init: function () {
@@ -109,7 +108,7 @@ export const defineControlBlocks = () => {
 
     javascriptGenerator.forBlock['control_wait'] = function (block: Blockly.Block) {
         const duration = block.getFieldValue('DURATION');
-        return `await new Promise(resolve => setTimeout(resolve, ${duration * 1000}));\n`;
+        return `await window.delay(${duration * 1000});\n`;
     };
 
     pythonGenerator.forBlock['control_wait'] = function (block: Blockly.Block) {

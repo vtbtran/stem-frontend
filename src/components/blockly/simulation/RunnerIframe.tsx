@@ -30,17 +30,26 @@ const IFRAME_HTML = `<!doctype html>
     const { type, code, language } = event.data;
     
     if (type === "run") {
+      window.isStopped = false; // Reset trạng thái để bắt đầu chạy mới
       try {
         if (language === "py") {
           await runPython(code);
         } else if (language === "cpp") {
-           await runCppSimulation(code);
+          await runCppSimulation(code);
         } else {
-           await runJs(code);
+          await runJs(code);
         }
       } catch (err) {
+        // Nếu chủ động dừng thì thoát êm, không báo lỗi đỏ
+        if (String(err).includes("STOP_REQUESTED")) return;
         parent.postMessage({ type: "blockly_error", error: String(err) }, "*");
       }
+    }
+
+    if (type === "stop") {
+      window.isStopped = true; // Kích hoạt cờ dừng để ngắt hàm sleep
+      // Gửi lệnh dừng xe ảo ngay lập tức
+      parent.postMessage({ type: "blockly_motion", action: "stop", value: { val: 0, dur: 0 } }, "*");
     }
   });
 </script>

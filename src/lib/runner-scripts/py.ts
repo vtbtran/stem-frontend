@@ -28,12 +28,21 @@ export const PYTHON_SCRIPT = `
     }
   }
 
-  async function runPython(code) {
+async function runPython(code) {
       const ready = await ensurePyodide();
       if (!ready) return;
 
       const pythonSetup = "import js\\nasync def move_forward(v, t): await js.moveForward(v, t)\\nasync def move_backward(v, t): await js.moveBackward(v, t)\\nasync def turn_left(v, t): await js.turnLeft(v, t)\\nasync def turn_right(v, t): await js.turnRight(v, t)\\nasync def say(t, d): await js.say(t, d)\\nasync def beep(): await js.beep()\\nasync def tone(f, d): await js.tone(f, d)\\n";
       
-      await window.pyodide.runPythonAsync(pythonSetup + code);
+      try {
+          await window.pyodide.runPythonAsync(pythonSetup + code);
+      } catch (e) {
+          // Pyodide ném lỗi Python, cần kiểm tra chuỗi lỗi
+          if (String(e).includes("STOP_REQUESTED")) {
+              console.log("Python Simulation: Stopped.");
+              return;
+          }
+          parent.postMessage({ type: "blockly_error", error: String(e) }, "*");
+      }
   }
 `;

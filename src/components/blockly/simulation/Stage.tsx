@@ -35,6 +35,8 @@ export default function Stage() {
     const xTicks = Array.from({ length: maxX - minX + 1 }, (_, i) => minX + i).filter(x => x !== 0);
     const yTicks = Array.from({ length: maxY - minY + 1 }, (_, i) => minY + i).filter(y => y !== 0);
 
+    const requestRef = useRef<number | null>(null);
+
     // Use refs for state access in event listeners to avoid re-binding
     const rotationRef = useRef(rotation);
     const positionRef = useRef(position);
@@ -51,33 +53,34 @@ export default function Stage() {
         const handleMotion = (e: BlocklyStageMotionEvent) => {
             const { type, value } = e.detail;
 
+            // --- 0. XỬ LÝ PHANH KHẨN CẤP ---
+            // Khi nhận lệnh stop (val=0, dur=0), dừng ngay lập tức hoạt ảnh đang chạy
+            if (type === "MOTION_MOVE" && typeof value === 'object' && value.val === 0 && value.dur === 0) {
+                if (requestRef.current) {
+                    cancelAnimationFrame(requestRef.current);
+                    requestRef.current = null;
+                }
+                return; // Thoát ngay không chạy logic di chuyển bên dưới
+            }
+
             if (type === "MOTION_MOVE") {
+                // ... (Giữ nguyên logic tính toán steps, duration của bạn) ...
                 let steps = 0;
                 let duration = 0.4;
-
-                if (typeof value === 'number') {
-                    // Legacy fallback
-                    steps = value;
-                } else if (typeof value === 'object' && 'val' in value) {
-                    const speed = Math.abs(value.val);
-                    const time = value.dur;
-                    duration = time;
-                    // Calculate distance based on speed * time
-                    // Steps = (Speed * Time) / 10
-                    steps = (speed * time) / 10;
+                if (typeof value === 'number') { steps = value; }
+                else if (typeof value === 'object' && 'val' in value) {
+                    steps = (value.val * value.dur) / 10;
+                    duration = value.dur;
                 }
 
-                // Disable CSS transition, use JS animation instead
                 setTransitionDuration(0);
 
-                // Capture current position for animation
-                // We use setPosition callback to ensure we have the latest state for the update,
-                // but we need rotation from the Ref because it's used in the calculation logic.
                 setPosition(currentPos => {
-                    // Use ref for rotation to get the latest value without dependency
+                    // Nếu đang có hoạt ảnh khác chạy, hủy nó đi để chạy lệnh mới
+                    if (requestRef.current) cancelAnimationFrame(requestRef.current);
+
                     const currentRotation = rotationRef.current;
                     const rad = (currentRotation * Math.PI) / 180;
-
                     const totalDist = steps * 50;
                     const startX = currentPos.x;
                     const startY = currentPos.y;
@@ -89,36 +92,35 @@ export default function Stage() {
                     const animate = (now: number) => {
                         const elapsed = now - startTime;
                         const progress = Math.min(elapsed / durationMs, 1);
-                        // Ease-out cubic
                         const eased = 1 - Math.pow(1 - progress, 3);
 
                         const newX = startX + (endX - startX) * eased;
                         const newY = startY + (endY - startY) * eased;
 
                         setPosition({ x: newX, y: newY });
-                        // Also update ref here if needed for immediate synchronous reads elsewhere, 
-                        // though setPosition update will trigger the effect to update ref eventually.
 
                         if (progress < 1) {
-                            requestAnimationFrame(animate);
+                            // Lưu ID hoạt ảnh vào Ref
+                            requestRef.current = requestAnimationFrame(animate);
+                        } else {
+                            requestRef.current = null;
                         }
                     };
 
-                    requestAnimationFrame(animate);
-                    return currentPos; // Return unchanged initially
+                    requestRef.current = requestAnimationFrame(animate);
+                    return currentPos;
                 });
 
             } else if (type === "MOTION_TURN") {
+                // Tương tự cho xoay, hãy thêm cancelAnimationFrame
+                if (requestRef.current) cancelAnimationFrame(requestRef.current);
+
                 let deg = 0;
                 let duration = 0.4;
                 if (typeof value === 'number') { deg = value; }
                 else if (typeof value === 'object' && 'val' in value) {
-                    const speed = value.val; // Signed speed
-                    const time = value.dur;
-                    duration = time;
-                    // Calculate degrees based on speed * time
-                    // Speed 150 for 0.5s = 75 degrees
-                    deg = (speed * time);
+                    deg = (value.val * value.dur);
+                    duration = value.dur;
                 }
 
                 setTransitionDuration(0);
@@ -137,17 +139,21 @@ export default function Stage() {
                     setRotation(prev => prev + delta);
 
                     if (progress < 1) {
-                        requestAnimationFrame(animate);
+                        requestRef.current = requestAnimationFrame(animate);
+                    } else {
+                        requestRef.current = null;
                     }
                 };
-                requestAnimationFrame(animate);
+                requestRef.current = requestAnimationFrame(animate);
 
             } else if (type === "MOTION_GOTO" && typeof value === 'object' && 'x' in value) {
+                if (requestRef.current) cancelAnimationFrame(requestRef.current);
                 setTransitionDuration(0);
                 setPosition({ x: value.x, y: value.y });
             }
         };
 
+        // ... (Giữ nguyên handleLook và addEventListener) ...
         const handleLook = (e: BlocklyStageLookEvent) => {
             if (e.detail.action === "say") {
                 setSpeechText(e.detail.value.text);
@@ -159,10 +165,11 @@ export default function Stage() {
         window.addEventListener("blockly:stage_look", handleLook);
 
         return () => {
+            if (requestRef.current) cancelAnimationFrame(requestRef.current);
             window.removeEventListener("blockly:stage_motion", handleMotion);
             window.removeEventListener("blockly:stage_look", handleLook);
         };
-    }, []); // Empty dependency array provided as requested for performance optimization
+    }, []);
 
     useEffect(() => {
         // Camera Follow Logic - runs continuously at 60fps
