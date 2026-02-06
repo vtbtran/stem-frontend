@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   title: "OnyxBlock",
   description: "Visual programming environment for Onyx robots",
   icons: {
-    icon: "/logo.png",
+    // icon: "/logo.png",
   },
 };
 

@@ -24,14 +24,16 @@ export class WebSerialTransport implements ITransport {
 
             if (!this.port.writable) throw new Error("Port not writable");
 
-            // Direct binary writer
             this.writer = this.port.writable.getWriter();
-
             this.readLoop();
             console.log("✅ Serial Port Connected successfully");
             return true;
-        } catch (err) {
-            console.error("Serial Connection Failed:", err);
+        } catch (err: any) {
+            if (err.name === 'NotFoundError') {
+                console.warn("⚠️ Người dùng đã đóng bảng chọn cổng Serial.");
+            } else {
+                console.error("Serial Connection Failed:", err);
+            }
             return false;
         }
     }

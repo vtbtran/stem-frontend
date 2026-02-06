@@ -20,6 +20,18 @@ const IFRAME_HTML = `<!doctype html>
 </head>
 <body>
 <script>
+window.delay = (ms) => new Promise((resolve, reject) => {
+    const checkStop = setInterval(() => {
+      if (window.isStopped) {
+        clearInterval(checkStop);
+        reject("STOP_REQUESTED");
+      }
+    }, 50);
+    setTimeout(() => {
+      clearInterval(checkStop);
+      resolve();
+    }, ms);
+  });
   ${COMMON_SCRIPT}
   ${JS_SCRIPT}
   ${PYTHON_SCRIPT}

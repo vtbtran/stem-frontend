@@ -75,6 +75,20 @@ export class FirmwareUploader {
 
             // Create transport and loader
             transport = new Transport(this.port);
+            try {
+                // Kéo DTR và RTS để reset chip vào Bootloader
+                await transport.setDTR(true);  // Nhấn nút BOOT (phần mềm)
+                await transport.setRTS(true);  // Nhấn nút RESET (phần mềm)
+                await this.delay(100);
+                
+                await transport.setRTS(false); // Thả nút RESET (Chip tỉnh dậy)
+                await this.delay(200);         // Chờ chip nhận tín hiệu BOOT
+                
+                await transport.setDTR(false); // Thả nút BOOT
+                await this.delay(100);
+            } catch (e) {
+                console.log("Auto-reset warning:", e);
+            }
             loader = new ESPLoader({
                 transport,
                 baudrate: 115200,

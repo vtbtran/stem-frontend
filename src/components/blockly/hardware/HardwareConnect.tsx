@@ -39,9 +39,9 @@ export default function HardwareConnect() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleConnect = async () => {
+const handleConnect = async () => {
     setIsConnecting(true);
-    // Save settings
+    // Lưu cài đặt
     localStorage.setItem("robot-transport", transportType);
     localStorage.setItem("robot-ip", ipAddress);
 
@@ -51,17 +51,25 @@ export default function HardwareConnect() {
       controller.setIpAddress(ipAddress);
     }
 
-    const success = await controller.connect(transportType);
-    if (success) {
-      console.log(`🚀 Hardware Connected via ${transportType}`);
-    } else {
-      console.error(`❌ Failed to connect via ${transportType}`);
+    try {
+      // Bọc lệnh này để kiểm soát hoàn toàn việc đóng/mở popover và loading
+      const success = await controller.connect(transportType);
+      
+      if (success) {
+        console.log(`🚀 Hardware Connected via ${transportType}`);
+        setIsConnected(true);
+      } else {
+        // Nếu nhấn "Hủy", success sẽ trả về false từ WebSerialTransport
+        setIsConnected(false);
+      }
+    } catch (error) {
+      console.warn("⚠️ Kết nối bị gián đoạn:", error);
+      setIsConnected(false);
+    } finally {
+      setIsConnecting(false);
+      setShowConfig(false);
     }
-    setIsConnected(success);
-    setIsConnecting(false);
-    setShowConfig(false);
   };
-
   const handleDisconnect = async () => {
     const controller = RobotController.getInstance();
     await controller.disconnect();

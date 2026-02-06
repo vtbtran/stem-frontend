@@ -56,16 +56,20 @@ export class RobotController {
             return false;
         }
 
-        const success = await this.transport.connect();
-        this.isConnected = success;
+        try {
+            const success = await this.transport.connect();
+            this.isConnected = success;
+            if (success && this.transport) {
+                this.transport.onReceive((data) => {
+                });
+            }
 
-        if (success && this.transport) {
-            this.transport.onReceive((data) => {
-                // console.log("Hardware:", data);
-            });
+            return success;
+        } catch (error) {
+            console.warn("⚠️ RobotController: Kết nối thất bại hoặc bị hủy bởi người dùng.", error);
+            this.isConnected = false;
+            return false;
         }
-
-        return success;
     }
 
     public async disconnect() {
@@ -99,7 +103,7 @@ export class RobotController {
     public async sendCommand(cmd: RobotCommand) {
         if (!this.isConnected || !this.transport) return;
 
-        const DEFAULT_SPEED = 200; // 0-255
+        const DEFAULT_SPEED = 100; // 0-255
 
         if (cmd.type === "motion") {
             // Ensure speed is set
