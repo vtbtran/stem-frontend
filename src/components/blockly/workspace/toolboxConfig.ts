@@ -47,22 +47,34 @@ export const TOOLBOX_CONFIG: CustomToolboxDefinition = {
         {
           kind: "block",
           type: "motion_move_forward",
-          fields: { SPEED: 150, SECS: 1 }
+          inputs: {
+            SPEED: { shadow: { type: "math_number", fields: { NUM: 150 } } },
+            SECS: { shadow: { type: "math_number", fields: { NUM: 1 } } }
+          }
         },
         {
           kind: "block",
           type: "motion_move_backward",
-          fields: { SPEED: 150, SECS: 1 }
+          inputs: {
+            SPEED: { shadow: { type: "math_number", fields: { NUM: 150 } } },
+            SECS: { shadow: { type: "math_number", fields: { NUM: 1 } } }
+          }
         },
         {
           kind: "block",
           type: "motion_turn_left",
-          fields: { SPEED: 150, SECS: 0.5 }
+          inputs: {
+            SPEED: { shadow: { type: "math_number", fields: { NUM: 150 } } },
+            SECS: { shadow: { type: "math_number", fields: { NUM: 0.5 } } }
+          }
         },
         {
           kind: "block",
           type: "motion_turn_right",
-          fields: { SPEED: 150, SECS: 0.5 }
+          inputs: {
+            SPEED: { shadow: { type: "math_number", fields: { NUM: 150 } } },
+            SECS: { shadow: { type: "math_number", fields: { NUM: 0.5 } } }
+          }
         }
       ]
     },
