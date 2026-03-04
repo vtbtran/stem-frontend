@@ -44,10 +44,78 @@ export const TOOLBOX_CONFIG: CustomToolboxDefinition = {
         { kind: "block", type: "control_stop" },
         { kind: "block", type: "control_wait" },
         { kind: "sep", gap: 32 },
-        { kind: "block", type: "motion_move_forward" },
-        { kind: "block", type: "motion_move_backward" },
-        { kind: "block", type: "motion_turn_left" },
-        { kind: "block", type: "motion_turn_right" }
+        {
+          kind: "block",
+          type: "motion_move_forward",
+          inputs: {
+            SPEED: {
+              shadow: {
+                type: "math_number",
+                fields: { NUM: 150 }
+              }
+            },
+            SECS: {
+              shadow: {
+                type: "math_number",
+                fields: { NUM: 1 }
+              }
+            }
+          }
+        },
+        {
+          kind: "block",
+          type: "motion_move_backward",
+          inputs: {
+            SPEED: {
+              shadow: {
+                type: "math_number",
+                fields: { NUM: 150 }
+              }
+            },
+            SECS: {
+              shadow: {
+                type: "math_number",
+                fields: { NUM: 1 }
+              }
+            }
+          }
+        },
+        {
+          kind: "block",
+          type: "motion_turn_left",
+          inputs: {
+            SPEED: {
+              shadow: {
+                type: "math_number",
+                fields: { NUM: 150 }
+              }
+            },
+            SECS: {
+              shadow: {
+                type: "math_number",
+                fields: { NUM: 0.5 }
+              }
+            }
+          }
+        },
+        {
+          kind: "block",
+          type: "motion_turn_right",
+          inputs: {
+            SPEED: {
+              shadow: {
+                type: "math_number",
+                fields: { NUM: 150 }
+              }
+            },
+            SECS: {
+              shadow: {
+                type: "math_number",
+                fields: { NUM: 0.5 }
+              }
+            }
+          }
+        }
       ]
     },
     {
