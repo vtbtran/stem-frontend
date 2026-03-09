@@ -40,7 +40,13 @@ export const TOOLBOX_CONFIG: CustomToolboxDefinition = {
       },
       contents: [
         { kind: "block", type: "event_start" },
-        { kind: "block", type: "control_forever" },
+        {
+          kind: "block",
+          type: "control_forever",
+          fields: {
+            TIMES: 10
+          }
+        },
         { kind: "block", type: "control_stop" },
         { kind: "block", type: "control_wait" },
         { kind: "sep", gap: 32 },
@@ -128,7 +134,20 @@ export const TOOLBOX_CONFIG: CustomToolboxDefinition = {
       },
       contents: [
         { kind: "block", type: "hardware_led" },
-        { kind: "block", type: "hardware_servo" }
+        {
+          kind: "block",
+          type: "hardware_led_brightness",
+          inputs: {
+            BRIGHTNESS: {
+              shadow: {
+                type: "math_number",
+                fields: { NUM: 255 }
+              }
+            }
+          }
+        },
+        { kind: "block", type: "hardware_servo" },
+        { kind: "block", type: "hardware_ultrasonic" }
       ]
     },
     {
@@ -153,7 +172,11 @@ export const TOOLBOX_CONFIG: CustomToolboxDefinition = {
       },
       contents: [
         { kind: "block", type: "sound_beep" },
-        { kind: "block", type: "sound_tone" }
+        { kind: "block", type: "sound_tone" },
+        { kind: "block", type: "sound_mp3_play" },
+        { kind: "block", type: "sound_mp3_pause" },
+        { kind: "block", type: "sound_mp3_next" },
+        { kind: "block", type: "sound_mp3_prev" }
       ]
     },
     { kind: "sep" },

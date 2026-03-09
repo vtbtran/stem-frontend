@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@mit-app-inventor/blockly-plugin-workspace-multiselect": "^1.0.2",
     "blockly": "^11.2.2",
     "esptool-js": "^0.5.7",
     "framer-motion": "^12.29.0",

@@ -30,10 +30,27 @@ export const Toolbox: React.FC<ToolboxProps> = ({ workspace, className, activeCa
     const handleClick = (category: CustomCategory) => {
         if (!workspace) return;
 
+        const toolbox = workspace.getToolbox() as Blockly.Toolbox;
+
+        if (activeCategory === category.name) {
+            // Toggle off if clicking the already active category
+            onCategoryClick("");
+            if (toolbox) {
+                if (typeof toolbox.clearSelection === 'function') {
+                    toolbox.clearSelection();
+                }
+                // Force hide the flyout to remove any remaining scrollbar
+                const flyout = toolbox.getFlyout();
+                if (flyout && typeof flyout.hide === 'function') {
+                    flyout.hide();
+                }
+            }
+            return;
+        }
+
         // Notify parent to update active state
         onCategoryClick(category.name);
 
-        const toolbox = workspace.getToolbox() as Blockly.Toolbox;
         if (toolbox && toolbox.getToolboxItems) {
             const item = toolbox.getToolboxItems().find((i) => {
                 const itemWithName = i as Blockly.IToolboxItem & { getName?: () => string };

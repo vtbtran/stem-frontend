@@ -11,7 +11,7 @@ export const defineMotionBlocks = () => {
         init: function () {
             this.appendValueInput("SPEED")
                 .setCheck("Number")
-                .appendField("di chuyển tới với tốc độ");
+                .appendField("⬆️ di chuyển tới với tốc độ");
             this.appendValueInput("SECS")
                 .setCheck("Number")
                 .appendField("trong");
@@ -31,7 +31,7 @@ export const defineMotionBlocks = () => {
         init: function () {
             this.appendValueInput("SPEED")
                 .setCheck("Number")
-                .appendField("di chuyển lùi với tốc độ");
+                .appendField("⬇️ di chuyển lùi với tốc độ");
             this.appendValueInput("SECS")
                 .setCheck("Number")
                 .appendField("trong");
@@ -51,7 +51,7 @@ export const defineMotionBlocks = () => {
         init: function () {
             this.appendValueInput("SPEED")
                 .setCheck("Number")
-                .appendField("xoay trái với tốc độ");
+                .appendField("↺ xoay trái với tốc độ");
             this.appendValueInput("SECS")
                 .setCheck("Number")
                 .appendField("trong");
@@ -71,7 +71,7 @@ export const defineMotionBlocks = () => {
         init: function () {
             this.appendValueInput("SPEED")
                 .setCheck("Number")
-                .appendField("xoay phải với tốc độ");
+                .appendField("↻ xoay phải với tốc độ");
             this.appendValueInput("SECS")
                 .setCheck("Number")
                 .appendField("trong");
@@ -144,26 +144,26 @@ export const defineMotionBlocks = () => {
     // CPP GENERATORS
     // ==========================================
     (cppGenerator as any).forBlock['motion_move_forward'] = function (block: Blockly.Block) {
-        const speed = (cppGenerator as any).valueToCode(block, 'SPEED', 0) || '150';
+        const speed = (cppGenerator as any).valueToCode(block, 'SPEED', 0) || '255';
         const secs = (cppGenerator as any).valueToCode(block, 'SECS', 0) || '1';
-        return `moveForward(${speed}, ${secs});\n`;
+        return `myCar.Move(Forward, ${speed});\ndelay(${secs} * 1000);\nmyCar.Move(Stop, 0);\n`;
     };
 
     (cppGenerator as any).forBlock['motion_move_backward'] = function (block: Blockly.Block) {
-        const speed = (cppGenerator as any).valueToCode(block, 'SPEED', 0) || '150';
+        const speed = (cppGenerator as any).valueToCode(block, 'SPEED', 0) || '255';
         const secs = (cppGenerator as any).valueToCode(block, 'SECS', 0) || '1';
-        return `moveBackward(${speed}, ${secs});\n`;
+        return `myCar.Move(Backward, ${speed});\ndelay(${secs} * 1000);\nmyCar.Move(Stop, 0);\n`;
     };
 
     (cppGenerator as any).forBlock['motion_turn_left'] = function (block: Blockly.Block) {
-        const speed = (cppGenerator as any).valueToCode(block, 'SPEED', 0) || '150';
+        const speed = (cppGenerator as any).valueToCode(block, 'SPEED', 0) || '255';
         const secs = (cppGenerator as any).valueToCode(block, 'SECS', 0) || '0.5';
-        return `turnLeft(${speed}, ${secs});\n`;
+        return `myCar.Move(Move_Left, ${speed});\ndelay(${secs} * 1000);\nmyCar.Move(Stop, 0);\n`;
     };
 
     (cppGenerator as any).forBlock['motion_turn_right'] = function (block: Blockly.Block) {
-        const speed = (cppGenerator as any).valueToCode(block, 'SPEED', 0) || '150';
+        const speed = (cppGenerator as any).valueToCode(block, 'SPEED', 0) || '255';
         const secs = (cppGenerator as any).valueToCode(block, 'SECS', 0) || '0.5';
-        return `turnRight(${speed}, ${secs});\n`;
+        return `myCar.Move(Move_Right, ${speed});\ndelay(${secs} * 1000);\nmyCar.Move(Stop, 0);\n`;
     };
 };

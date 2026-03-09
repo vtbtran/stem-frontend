@@ -7,9 +7,7 @@ export const defineControlBlocks = () => {
     Blockly.Blocks['event_start'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField("Click để");
-            this.appendDummyInput()
-                .appendField("bắt đầu");
+                .appendField("🚩 Click để bắt đầu");
             this.setNextStatement(true, null);
             this.setColour("#4C97FF"); // Match Motion Blue
             this.setTooltip("Bắt đầu chương trình");
@@ -34,16 +32,18 @@ export const defineControlBlocks = () => {
         return '';
     };
 
-    // Loop: Forever
+    // Loop: Repeat N times
     Blockly.Blocks['control_forever'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField("lặp lại mãi");
+                .appendField("🔄 lặp lại")
+                .appendField(new Blockly.FieldNumber(3, 1, Infinity, 1), "TIMES")
+                .appendField("lần");
             this.appendStatementInput("DO")
                 .setCheck(null);
             this.setPreviousStatement(true, null);
             this.setColour("#4C97FF"); // Match Motion Blue
-            this.setTooltip("Lặp lại các khối bên trong mãi mãi");
+            this.setTooltip("Lặp lại các khối bên trong số lần nhất định");
             this.setHelpUrl("");
         }
     };
@@ -51,28 +51,29 @@ export const defineControlBlocks = () => {
     // Generator - JS (Async Safe)
     javascriptGenerator.forBlock['control_forever'] = function (block: Blockly.Block) {
         const branch = javascriptGenerator.statementToCode(block, 'DO');
-        // Thêm checkStop() vào ngay đầu mỗi vòng lặp
-        return `while (!window.isStopped) {\n${branch}  await window.delay(10);\n}\n`;
+        const times = Number(block.getFieldValue('TIMES')) || 0;
+        return `for (let __i = 0; __i < ${times}; __i++) {\n${branch}}\n`;
     };
 
     // Generator - Python (Async Safe)
     pythonGenerator.forBlock['control_forever'] = function (block: Blockly.Block) {
         const branch = pythonGenerator.statementToCode(block, 'DO');
-        // Inject asyncio sleep to yield control
-        return `while True:\n${branch}  import asyncio\n  await asyncio.sleep(0.01)\n`;
+        const times = Number(block.getFieldValue('TIMES')) || 0;
+        return `for _ in range(${times}):\n${branch}`;
     };
 
     // Generator - C++
     (cppGenerator as any).forBlock['control_forever'] = function (block: Blockly.Block) {
         const branch = (cppGenerator as any).statementToCode(block, 'DO');
-        return `while (true) {\n${branch}}\n`;
+        const times = Number(block.getFieldValue('TIMES')) || 0;
+        return `for (int __i = 0; __i < ${times}; __i++) {\n${branch}}\n`;
     };
 
     // Command: Stop
     Blockly.Blocks['control_stop'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField("dừng lại");
+                .appendField("🛑 dừng lại");
             this.setPreviousStatement(true, null);
             this.setColour("#4C97FF");
             this.setTooltip("Dừng chương trình ngay lập tức");
@@ -80,10 +81,10 @@ export const defineControlBlocks = () => {
         }
     };
 
-javascriptGenerator.forBlock['control_stop'] = function (block: Blockly.Block) {
-   
-    return "window.postMessage({ type: 'stop' }, '*');\nthrow 'STOP';\n";
-};
+    javascriptGenerator.forBlock['control_stop'] = function (block: Blockly.Block) {
+
+        return "window.postMessage({ type: 'stop' }, '*');\nthrow 'STOP';\n";
+    };
     pythonGenerator.forBlock['control_stop'] = function (block: Blockly.Block) {
         return "raise Exception('STOP')\n";
     };
@@ -95,7 +96,7 @@ javascriptGenerator.forBlock['control_stop'] = function (block: Blockly.Block) {
     Blockly.Blocks['control_wait'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField("đợi")
+                .appendField("⏱️ đợi")
                 .appendField(new Blockly.FieldNumber(1, 0), "DURATION")
                 .appendField("giây");
             this.setPreviousStatement(true, null);

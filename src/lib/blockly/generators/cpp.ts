@@ -1,6 +1,6 @@
 import * as Blockly from 'blockly';
 
-export const cppGenerator = new Blockly.Generator('CPP') as CppGenerator;
+export const cppGenerator = new Blockly.Generator('CPP') as unknown as CppGenerator;
 
 export interface CppGenerator extends Blockly.Generator {
     ORDER: typeof Order;
@@ -55,6 +55,12 @@ cppGenerator.ORDER = Order;
 
 cppGenerator.init = function (workspace: Blockly.Workspace) {
     (cppGenerator as any).workspace_ = workspace;
+    (cppGenerator as any).definitions_ = Object.create(null);
+    (cppGenerator as any).setups_ = Object.create(null);
+
+    // Default ACEBOTT dependencies
+    (cppGenerator as any).definitions_['include_vehicle'] = '#include <vehicle.h>\nvehicle myCar;';
+    (cppGenerator as any).setups_['setup_vehicle'] = 'myCar.Init();';
 };
 
 cppGenerator.finish = function (code: string) {
@@ -112,14 +118,40 @@ cppGenerator.finish = function (code: string) {
             // Top-level Loop block - content goes directly to loop()
             const branch = cppGenerator.statementToCode(block, 'DO');
             loopCode += branch;
+        } else {
+            // Orphan blocks - treat them as Setup blocks
+            const extracted = extractCodeFromChain(block);
+            setupCode += extracted.setup;
+            loopCode += extracted.loop;
         }
-        // ALL OTHER BLOCKS ARE IGNORED (Orphans)
     }
 
-    const indentedSetup = cppGenerator.prefixLines(setupCode, '  ');
+    // Collect definitions (includes, globals)
+    let defs = '';
+    const definitions = (cppGenerator as any).definitions_;
+    if (definitions) {
+        for (const name in definitions) {
+            defs += definitions[name] + '\n';
+        }
+    }
+
+    // Collect setups
+    let setups = '';
+    const generatorSetups = (cppGenerator as any).setups_;
+    if (generatorSetups) {
+        for (const name in generatorSetups) {
+            setups += generatorSetups[name] + '\n';
+        }
+    }
+
+    const indentedSetup = cppGenerator.prefixLines(setups + setupCode, '  ');
     const indentedLoop = cppGenerator.prefixLines(loopCode, '  ');
 
-    return `#include "robot.h"\n\nvoid setup() {\n${indentedSetup}}\n\nvoid loop() {\n${indentedLoop}}\n`;
+    // Clean up
+    (cppGenerator as any).definitions_ = Object.create(null);
+    (cppGenerator as any).setups_ = Object.create(null);
+
+    return `${defs}\nvoid setup() {\n${indentedSetup}}\n\nvoid loop() {\n${indentedLoop}}\n`;
 };
 
 cppGenerator.scrub_ = function (block: Blockly.Block, code: string, thisOnly?: boolean) {
