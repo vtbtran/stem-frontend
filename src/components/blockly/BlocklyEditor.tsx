@@ -6,10 +6,10 @@ import { CodePanel, RightPanel } from "./editor";
 import { Stage, RunnerIframe } from "./simulation";
 import { HardwareConnect, CameraWindow } from "./hardware";
 import { BlockSuggestionAI } from "./workspace";
+import WorkspaceReviewPanel, { ReviewPayload } from "./workspace/WorkspaceReviewPanel";
 import { synth } from "@/lib/audio/SimpleSynth";
 import { BlocklyCodeEvent } from "@/types/events";
 import { useSimulationEvents } from "@/hooks/useSimulationEvents";
-import { useTerminalLog } from "@/hooks/useTerminalLog";
 import Toast, { ToastType } from "../ui/Toast";
 
 const BlocklyWorkspace = dynamic(() => import("./workspace/BlocklyWorkspace"), { ssr: false });
@@ -26,15 +26,14 @@ export default function BlocklyEditor() {
   const [isMounted, setIsMounted] = useState(false);
   const [isStageMinimized, setIsStageMinimized] = useState(false);
 
-  // Custom Hook for Terminal Logs
-  const { terminalLogs } = useTerminalLog();
-
-  const [rightPanelTab, setRightPanelTab] = useState<"terminal" | "ai">("terminal");
   const [showAISuggestion, setShowAISuggestion] = useState(false);
   const simElementRef = useRef<HTMLDivElement>(null);
   const activeAreaRef = useRef<HTMLDivElement>(null);
   
   const [toast, setToast] = useState<{message: string, type: ToastType} | null>(null);
+
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewPayload, setReviewPayload] = useState<ReviewPayload | null>(null);
 
 
   const getSimBoundaries = useCallback(() => {
@@ -112,6 +111,31 @@ export default function BlocklyEditor() {
     };
   }, []);
 
+  // --- AI workspace review panel (outside the AI modal) ---
+  useEffect(() => {
+    const onReview = (e: Event) => {
+      const ce = e as CustomEvent<ReviewPayload>;
+      if (!ce.detail?.workspace) return;
+      setReviewPayload(ce.detail);
+      setReviewOpen(true);
+    };
+    window.addEventListener("blockly:review", onReview as EventListener);
+    
+    // ESC key to reject preview
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && reviewOpen) {
+        setReviewOpen(false);
+        window.dispatchEvent(new CustomEvent("blockly:reject_preview"));
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    
+    return () => {
+      window.removeEventListener("blockly:review", onReview as EventListener);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [reviewOpen]);
+
   const onRun = useCallback(() => {
     // Basic validation for C++ empty code
     if (language === 'cpp') {
@@ -161,6 +185,23 @@ export default function BlocklyEditor() {
         <BlockSuggestionAI
           isOpen={showAISuggestion}
           onClose={() => setShowAISuggestion(false)}
+        />
+
+        <WorkspaceReviewPanel
+          isOpen={reviewOpen}
+          payload={reviewPayload}
+          onClose={() => setReviewOpen(false)}
+          onAccept={(payload) => {
+            window.dispatchEvent(new CustomEvent("blockly:workspace_load", {
+              detail: { workspace: payload.workspace, skipPreview: true }
+            }));
+            setReviewOpen(false);
+          }}
+          onReject={() => {
+            setReviewOpen(false);
+          }}
+          onUndo={() => window.dispatchEvent(new CustomEvent("blockly:undo"))}
+          onRedo={() => window.dispatchEvent(new CustomEvent("blockly:redo"))}
         />
         {/* STAGE DOCK (Fixed Top-Right) */}
         <div
@@ -361,18 +402,6 @@ export default function BlocklyEditor() {
                 </button>
               )}
 
-              {/* AI BUTTON */}
-              <button
-                onClick={() => setRightPanelTab("ai")}
-                className={`h-10 px-4 rounded-xl text-xs font-bold uppercase tracking-wider active:scale-[0.98] transition-all flex items-center gap-2 ${rightPanelTab === "ai"
-                  ? "bg-blue-600/20 text-blue-400 ring-1 ring-blue-500/50"
-                  : "bg-transparent border border-slate-600 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-                  }`}
-              >
-                <span>🤖</span>
-                <span>AI</span>
-              </button>
-
               {/* RUN BUTTON */}
               <button
                 onClick={onRun}
@@ -393,17 +422,9 @@ export default function BlocklyEditor() {
               <CodePanel code={code} onChange={setCode} />
             </div>
 
-            {/* RIGHT PANEL (30%) - Terminal + AI */}
+            {/* RIGHT PANEL (30%) - Terminal */}
             <div className="flex-[3] bg-[#0F172A] rounded-2xl border border-slate-800/60 shadow-xl overflow-hidden flex flex-col ring-1 ring-white/5">
-              <RightPanel
-                code={code}
-                language={language}
-                terminalLogs={terminalLogs}
-                activeTab={rightPanelTab}
-                onTabChange={setRightPanelTab}
-                onApplyCode={(newCode) => setCode(newCode)}
-                onInsertCode={(insertCode) => setCode(prev => prev + "\n" + insertCode)}
-              />
+              <RightPanel />
             </div>
           </div>
         </div>

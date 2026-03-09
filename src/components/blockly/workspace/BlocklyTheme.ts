@@ -16,6 +16,11 @@ export const OnyxTheme = Blockly.Theme.defineTheme('onyx', {
         scrollbarOpacity: 0.4,
         cursorColour: '#2563EB',              // User: Selected glow base
     },
+    fontStyle: {
+        weight: 'normal',
+        size: 11,
+        family: '"Helvetica Neue", Helvetica, Arial, sans-serif'
+    },
     blockStyles: {
         "control-style": {
             colourPrimary: "#3B82F6",

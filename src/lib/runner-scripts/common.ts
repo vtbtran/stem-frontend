@@ -111,18 +111,18 @@ const sleep = async (ms) => {
        checkStop();
   };
   
-  window.led = async (state) => {
+  window.led = async (pin, state) => {
   checkStop();
-     console.log(\` Đèn \${state}\`);
-     parent.postMessage({ type: "blockly_look", action: state }, "*");
+     console.log(\` Đèn chân \${pin} \${state}\`);
+     parent.postMessage({ type: "blockly_look", action: state, pin: Number(pin) }, "*");
      await sleep(100);
      checkStop();
   };
 
-  window.servo = async (angle) => {
+  window.servo = async (pin, angle) => {
   checkStop();
-     console.log(\` Servo góc \${angle}\`);
-     parent.postMessage({ type: "blockly_servo", value: Number(angle) }, "*");
+     console.log(\` Servo chân \${pin} góc \${angle}\`);
+     parent.postMessage({ type: "blockly_servo", value: Number(angle), pin: Number(pin) }, "*");
      await sleep(100);
      checkStop();
   };

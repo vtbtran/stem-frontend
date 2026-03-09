@@ -8,7 +8,7 @@ export const defineLooksBlocks = () => {
     Blockly.Blocks['looks_say'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField("nói")
+                .appendField("💬 nói")
                 .appendField(new Blockly.FieldTextInput("Hello!"), "MESSAGE")
                 .appendField("trong")
                 .appendField(new Blockly.FieldNumber(2, 0.1, 60), "SECS")

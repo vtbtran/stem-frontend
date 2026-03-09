@@ -14,12 +14,14 @@ import { javascriptGenerator, pythonGenerator, cppGenerator } from "@/lib/blockl
 import { TOOLBOX_CONFIG, CustomCategory } from "./toolboxConfig";
 import { Toolbox } from "./Toolbox";
 import { OnyxTheme } from "./BlocklyTheme";
+import { Multiselect } from '@mit-app-inventor/blockly-plugin-workspace-multiselect';
 import PromptModal from "../../PromptModal";
 import { defineMotionBlocks } from "../blocks/motion";
 import { defineControlBlocks } from "../blocks/control";
 import { defineSoundBlocks } from "../blocks/sound";
 import { defineLooksBlocks } from "../blocks/looks";
 import { defineHardwareBlocks } from "../blocks/hardware";
+
 
 // Initialize custom blocks
 defineMotionBlocks();
@@ -47,11 +49,11 @@ function installFlyoutNoZoomPatch() {
   flyoutNoZoomInstalled = true;
 
   const flyoutProto = (Blockly.Flyout as unknown as { prototype: FlyoutProto }).prototype;
-  flyoutProto.getFlyoutScale = () => 1;
+  flyoutProto.getFlyoutScale = () => 0.85;
 
   const h = (Blockly as unknown as { HorizontalFlyout?: { prototype: FlyoutProto } }).HorizontalFlyout;
   if (h?.prototype) {
-    h.prototype.getFlyoutScale = () => 1;
+    h.prototype.getFlyoutScale = () => 0.85;
   }
 }
 
@@ -87,6 +89,17 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
       const code = generator.workspaceToCode(ws);
       onCodeRef.current?.(code);
       window.dispatchEvent(new CustomEvent("blockly:code", { detail: { code } }));
+
+      // Also emit workspace JSON snapshot for AI features (generate/fix/explain/apply)
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const workspaceJson = (Blockly as any).serialization?.workspaces?.save?.(ws);
+        if (workspaceJson) {
+          window.dispatchEvent(new CustomEvent("blockly:workspace", { detail: { workspace: workspaceJson } }));
+        }
+      } catch (e) {
+        console.warn("Failed to serialize workspace for AI:", e);
+      }
 
       if (!skipXml) {
         const xml = Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(ws));
@@ -172,6 +185,7 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
 
       trashcan: true,
       media: "https://unpkg.com/blockly/media/",
+      renderer: "zelos",
       grid: {
         spacing: 25,
         length: 3,
@@ -181,7 +195,7 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
       zoom: {
         controls: false,
         wheel: true,
-        startScale: 1.0,
+        startScale: 0.85,
         maxScale: 3,
         minScale: 0.3,
         scaleSpeed: 1.2,
@@ -191,8 +205,74 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
       move: { scrollbars: true, drag: true, wheel: false },
     });
 
+    // Thêm Listener lắng nghe sự kiện của workspace
+    ws.addChangeListener((event) => {
+      // 1. Bắt sự kiện TẠO block (đoạn code canh giữa lúc nãy)
+      if (event.type === Blockly.Events.BLOCK_CREATE) {
+        const block = ws.getBlockById(event.blockId);
+        if (block && !ws.isDragging()) {
+          const metricsManager = ws.getMetricsManager();
+          const viewMetrics = metricsManager.getViewMetrics(true);
+          const blockHW = block.getHeightWidth();
+
+          const centerX = viewMetrics.left + (viewMetrics.width / 2.5) - (blockHW.width / 2);
+          const centerY = viewMetrics.top + (viewMetrics.height / 2) - (blockHW.height / 2);
+          const currentXY = block.getRelativeToSurfaceXY();
+
+          block.moveBy(centerX - currentXY.x, centerY - currentXY.y);
+        }
+      }
+
+    });
+
+    // -------------------------------------------------------------
+    // Initialize workspace and multiselect
+    // -------------------------------------------------------------
     workspaceRef.current = ws;
     setWorkspaceState(ws);
+
+    // Initialize Multiselect plugin
+    const multiselectPlugin = new Multiselect(ws);
+    multiselectPlugin.init({
+      multiselectIcon: {
+        hideIcon: true, // We don't necessarily need the onscreen toggle icon if using Shift
+      },
+    });
+
+    // Prevent flyout from auto-closing when blocks are dragged out
+    const toolbox = ws.getToolbox() as Blockly.Toolbox;
+    if (toolbox && toolbox.getFlyout) {
+      const flyout = toolbox.getFlyout();
+      if (flyout) {
+        flyout.autoClose = false;
+
+        // Re-enable click-to-instantiate because autoClose = false disables it
+        const flyoutWs = flyout.getWorkspace();
+        if (flyoutWs) {
+          flyoutWs.addChangeListener((e: Blockly.Events.Abstract) => {
+            if (e.type === Blockly.Events.CLICK) {
+              const clickEvent = e as unknown as { blockId?: string; targetType?: string };
+              if (clickEvent.blockId && clickEvent.targetType === 'block') {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const gesture = (ws as any).getGesture?.() || (Blockly as any).Gesture?.inProgress?.();
+                const isDragging = gesture && typeof gesture.isDragging === 'function' ? gesture.isDragging() : false;
+
+                if (!isDragging) {
+                  const blockToCreate = flyoutWs.getBlockById(clickEvent.blockId);
+                  if (blockToCreate) {
+                    const xml = Blockly.utils.xml.createElement('xml');
+                    const blockDom = Blockly.Xml.blockToDom(blockToCreate) as Element;
+                    xml.appendChild(blockDom);
+                    Blockly.Xml.domToWorkspace(xml, ws);
+                    // The new block will be auto-centered by the BLOCK_CREATE event listener
+                  }
+                }
+              }
+            }
+          });
+        }
+      }
+    }
 
     // ---------------- helpers ----------------
     const lastToolboxCategoryRef = { current: "0" };
@@ -201,16 +281,14 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
       const tb = ws.getToolbox();
       if (!tb) return;
 
-      if (!tb.getSelectedItem()) {
-        const itemToSelect = (tb as Blockly.Toolbox).getToolboxItemById(lastToolboxCategoryRef.current);
+      const selected = tb.getSelectedItem();
+      if (selected) {
+        lastToolboxCategoryRef.current = selected.getId() || "0";
+      } else if (activeCategory) {
+        const itemToSelect = (tb as Blockly.Toolbox).getToolboxItemById(activeCategory);
         if (itemToSelect) {
           (tb as Blockly.Toolbox).setSelectedItem(itemToSelect);
-        } else {
-          tb.selectItemByPosition(0);
         }
-      } else {
-        const selected = tb.getSelectedItem();
-        if (selected) lastToolboxCategoryRef.current = selected.getId();
       }
     };
 
@@ -289,9 +367,39 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
     const ro = new ResizeObserver(() => resize());
     ro.observe(host);
 
-    const onChange = () => {
+    const onChange = (e: Blockly.Events.Abstract) => {
       ensureToolboxSelected();
-      emitCode();
+      if (!e.isUiEvent) emitCode();
+
+      // Auto-center blocks clicked from Toolbox
+      if (e.type === Blockly.Events.CREATE) {
+        const createEvt = e as Blockly.Events.BlockCreate;
+        if (createEvt.xml && createEvt.recordUndo) {
+          setTimeout(() => {
+            if (!workspaceRef.current) return;
+            const activeWs = workspaceRef.current;
+            const block = activeWs.getBlockById(createEvt.blockId!);
+            if (!block) return;
+
+            // Check if user is currently dragging it
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const gesture = (activeWs as any).getGesture?.() || (Blockly as any).Gesture?.inProgress?.();
+            const isDragging = gesture && typeof gesture.isDragging === 'function' ? gesture.isDragging() : false;
+
+            if (!isDragging) {
+              const metrics = activeWs.getMetrics();
+              const targetX = (metrics.viewLeft + metrics.viewWidth / 2) / activeWs.scale - 80;
+              const targetY = (metrics.viewTop + metrics.viewHeight / 2) / activeWs.scale - 30;
+
+              const currentXY = block.getRelativeToSurfaceXY();
+              // If it's near the left edge (default flyout drop), move to center
+              if (currentXY.x < (metrics.viewLeft / activeWs.scale) + 150) {
+                block.moveBy(targetX - currentXY.x, targetY - currentXY.y);
+              }
+            }
+          }, 10);
+        }
+      }
     };
     ws.addChangeListener(onChange);
 
@@ -350,8 +458,330 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
     };
     window.addEventListener("blockly:request_run", onRequestRun);
 
+    // -------- Undo/Redo Stack for AI workspace loads --------
+    const undoStack: unknown[] = [];
+    const redoStack: unknown[] = [];
+    const MAX_STACK = 20;
+
+    // Track preview state (AI-generated but not yet accepted)
+    let isInPreviewMode = false;
+    let previewSource = ""; // 'ai-generate', 'ai-fix', 'ai-explain-fix'
+
+    const saveCurrentState = () => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const saveFn = (Blockly as any).serialization?.workspaces?.save;
+        if (typeof saveFn === "function") {
+          const state = saveFn(ws);
+          undoStack.push(state);
+          if (undoStack.length > MAX_STACK) undoStack.shift();
+        }
+      } catch (err) {
+        console.warn("Failed to save workspace state for undo:", err);
+      }
+    };
+
+    const peekUndoStack = () => {
+      return undoStack.length > 0 ? undoStack[undoStack.length - 1] : null;
+    };
+
+    const pushRedoState = () => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const saveFn = (Blockly as any).serialization?.workspaces?.save;
+        if (typeof saveFn === "function") {
+          const state = saveFn(ws);
+          redoStack.push(state);
+          if (redoStack.length > MAX_STACK) redoStack.shift();
+        }
+      } catch (err) {
+        console.warn("Failed to save workspace state for redo:", err);
+      }
+    };
+
+    // -------- Handle AI "load workspace" request (with validation + undo + preview) --------
+    const onWorkspaceLoad = (e: Event) => {
+      try {
+        const ce = e as CustomEvent<{ workspace: unknown; skipPreview?: boolean; isPreview?: boolean; source?: string }>;
+        const incoming = ce.detail?.workspace;
+        if (!incoming) return;
+
+        // Validate JSON structure before loading
+        if (typeof incoming !== "object" || incoming === null) {
+          throw new Error("Workspace JSON không hợp lệ: phải là object");
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const loadFn = (Blockly as any).serialization?.workspaces?.load;
+        if (typeof loadFn !== "function") {
+          throw new Error("Blockly serialization API không khả dụng");
+        }
+
+        // Save current state for undo - LUÔN save để có thể undo/reject
+        // Kể cả khi workspace trống, cũng cần lưu để có thể quay lại trạng thái trống
+        saveCurrentState();
+
+        // Track preview mode
+        isInPreviewMode = ce.detail?.isPreview ?? false;
+        previewSource = ce.detail?.source || "";
+
+        // New action invalidates redo (trừ khi đang preview - cho phép redo để quay lại preview)
+        if (!isInPreviewMode) {
+          redoStack.length = 0;
+        }
+
+        // Try to load in a temporary workspace to validate
+        try {
+          // Create a temporary workspace to test load
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const tempWs = new (Blockly as any).Workspace();
+          loadFn(incoming, tempWs);
+          tempWs.dispose();
+
+          // If validation passed, load into real workspace
+          ws.clear();
+
+          // eslint-disable-next-line no-console
+          console.log("[AI] Loading workspace:", incoming);
+
+          loadFn(incoming, ws);
+
+          // Ensure workspace is properly rendered
+          ws.render();
+
+          // Center the view after a short delay to ensure blocks are positioned
+          setTimeout(() => {
+            try {
+              ws.scrollCenter();
+              // eslint-disable-next-line no-console
+              console.log("[AI] Workspace loaded, blocks count:", ws.getTopBlocks(true).length);
+            } catch (e) {
+              // eslint-disable-next-line no-console
+              console.warn("[AI] Failed to center view:", e);
+            }
+          }, 100);
+
+          emitCode();
+
+          // Notification phù hợp với mode
+          const message = isInPreviewMode
+            ? `👁️ Preview: ${previewSource}. Dùng Accept để giữ, Reject/Undo để hoàn tác.`
+            : "✅ Đã nạp workspace thành công";
+
+          window.dispatchEvent(new CustomEvent("blockly:notification", {
+            detail: { type: isInPreviewMode ? "info" : "success", message }
+          }));
+        } catch (validationErr) {
+          // Validation failed - don't clear old workspace
+          const msg = validationErr instanceof Error ? validationErr.message : String(validationErr);
+          throw new Error(`Workspace không hợp lệ: ${msg}. Workspace cũ đã được giữ nguyên.`);
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("Failed to load workspace from AI:", err);
+        // Show error notification
+        window.dispatchEvent(new CustomEvent("blockly:notification", {
+          detail: { type: "error", message: `❌ ${msg}` }
+        }));
+      }
+    };
+    window.addEventListener("blockly:workspace_load", onWorkspaceLoad as EventListener);
+
+    // -------- Handle workspace preview (show preview, then load on accept) --------
+    const onWorkspacePreview = (e: Event) => {
+      try {
+        const ce = e as CustomEvent<{ workspace: unknown; source: string; onAccept: () => void; onReject: () => void }>;
+        const incoming = ce.detail?.workspace;
+        if (!incoming) return;
+
+        // Save current state for undo
+        const topBlocks = ws.getTopBlocks(true);
+        if (topBlocks.length > 0) {
+          saveCurrentState();
+        }
+        // Preview does not invalidate redo (no change applied yet)
+
+        // Preview will be handled by BlockSuggestionAI modal
+        // This listener just ensures state is saved
+      } catch (err) {
+        console.error("Failed to handle workspace preview:", err);
+      }
+    };
+    window.addEventListener("blockly:workspace_preview", onWorkspacePreview as EventListener);
+
+    // -------- Handle undo request --------
+    const onUndo = () => {
+      if (undoStack.length === 0) {
+        window.dispatchEvent(new CustomEvent("blockly:notification", {
+          detail: { type: "info", message: "Không có gì để hoàn tác" }
+        }));
+        return;
+      }
+
+      try {
+        const previousState = undoStack.pop();
+        if (!previousState) return;
+
+        // Save current state to redo stack
+        pushRedoState();
+
+        // Nếu đang trong preview mode, undo sẽ thoát khỏi preview mode
+        if (isInPreviewMode) {
+          isInPreviewMode = false;
+          previewSource = "";
+          // Đóng review panel khi undo khỏi preview
+          window.dispatchEvent(new CustomEvent("blockly:review_close"));
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const loadFn = (Blockly as any).serialization?.workspaces?.load;
+        if (typeof loadFn === "function") {
+          ws.clear();
+          loadFn(previousState, ws);
+          emitCode();
+
+          window.dispatchEvent(new CustomEvent("blockly:notification", {
+            detail: { type: "success", message: "↩️ Đã hoàn tác" }
+          }));
+        }
+      } catch (err) {
+        console.error("Failed to undo:", err);
+      }
+    };
+    window.addEventListener("blockly:undo", onUndo as EventListener);
+
+    // -------- Handle redo request --------
+    const onRedo = () => {
+      if (redoStack.length === 0) {
+        window.dispatchEvent(new CustomEvent("blockly:notification", {
+          detail: { type: "info", message: "Không có gì để làm lại" }
+        }));
+        return;
+      }
+
+      try {
+        const nextState = redoStack.pop();
+        if (!nextState) return;
+
+        // Save current state to undo stack
+        saveCurrentState();
+
+        // Redo thì trở lại preview mode (vì redo chỉ có state từ preview)
+        // Note: source sẽ không chính xác 100% nhưng không quan trọng lắm
+        isInPreviewMode = true;
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const loadFn = (Blockly as any).serialization?.workspaces?.load;
+        if (typeof loadFn === "function") {
+          ws.clear();
+          loadFn(nextState, ws);
+          emitCode();
+
+          window.dispatchEvent(new CustomEvent("blockly:notification", {
+            detail: { type: "success", message: "↪️ Đã làm lại" }
+          }));
+        }
+      } catch (err) {
+        console.error("Failed to redo:", err);
+      }
+    };
+    window.addEventListener("blockly:redo", onRedo as EventListener);
+
+    // -------- Handle Accept Preview --------
+    const onAcceptPreview = () => {
+      if (!isInPreviewMode) {
+        window.dispatchEvent(new CustomEvent("blockly:notification", {
+          detail: { type: "info", message: "Không có thay đổi nào đang chờ xác nhận" }
+        }));
+        return;
+      }
+
+      // Chấp nhận preview: lưu state hiện tại vào undo stack và thoát preview mode
+      saveCurrentState();
+      isInPreviewMode = false;
+      previewSource = "";
+      redoStack.length = 0; // Accept thì clear redo stack
+
+      window.dispatchEvent(new CustomEvent("blockly:notification", {
+        detail: { type: "success", message: "✅ Đã chấp nhận thay đổi" }
+      }));
+    };
+    window.addEventListener("blockly:accept_preview", onAcceptPreview as EventListener);
+
+    // -------- Handle Reject Preview --------
+    const onRejectPreview = () => {
+      if (!isInPreviewMode) {
+        window.dispatchEvent(new CustomEvent("blockly:notification", {
+          detail: { type: "info", message: "Không có thay đổi nào đang chờ xác nhận" }
+        }));
+        return;
+      }
+
+      // Từ chối preview: undo về state trước đó
+      onUndo();
+    };
+    window.addEventListener("blockly:reject_preview", onRejectPreview as EventListener);
+
+    // -------- Keyboard shortcuts (AI undo/redo) --------
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Don't hijack typing inside inputs
+      const el = e.target as HTMLElement | null;
+      const tag = el?.tagName?.toLowerCase();
+      const isTyping = tag === "input" || tag === "textarea" || (el?.getAttribute?.("contenteditable") === "true");
+      if (isTyping) return;
+
+      const ctrlOrCmd = e.ctrlKey || e.metaKey;
+      if (!ctrlOrCmd) return;
+
+      // Undo: Ctrl+Z / Cmd+Z
+      if (e.key.toLowerCase() === "z" && !e.shiftKey) {
+        e.preventDefault();
+        onUndo();
+        return;
+      }
+
+      // Redo: Ctrl+Y OR Ctrl+Shift+Z (common)
+      if (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey)) {
+        e.preventDefault();
+        onRedo();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+
+    // -------- Handle "add block" request (used by AI suggestion modal) --------
+    const onAddBlock = (e: Event) => {
+      try {
+        const ce = e as CustomEvent<{ type: string }>;
+        const type = ce.detail?.type;
+        if (!type) return;
+
+        const block = ws.newBlock(type);
+        block.initSvg();
+        block.render();
+
+        // Place block roughly in center of view
+        const metrics = ws.getMetrics();
+        const x = (metrics.viewLeft + metrics.viewWidth / 2) / ws.scale;
+        const y = (metrics.viewTop + metrics.viewHeight / 2) / ws.scale;
+        block.moveBy(x, y);
+
+        emitCode();
+      } catch (err) {
+        console.error("Failed to add block:", err);
+      }
+    };
+    window.addEventListener("blockly:add_block", onAddBlock as EventListener);
+
     return () => {
       window.removeEventListener("blockly:request_run", onRequestRun);
+      window.removeEventListener("blockly:workspace_load", onWorkspaceLoad as EventListener);
+      window.removeEventListener("blockly:workspace_preview", onWorkspacePreview as EventListener);
+      window.removeEventListener("blockly:undo", onUndo as EventListener);
+      window.removeEventListener("blockly:redo", onRedo as EventListener);
+      window.removeEventListener("blockly:accept_preview", onAcceptPreview as EventListener);
+      window.removeEventListener("blockly:reject_preview", onRejectPreview as EventListener);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("blockly:add_block", onAddBlock as EventListener);
       Blockly.dialog.setPrompt(window.prompt);
       ro.disconnect();
       ws.dispose();
@@ -384,7 +814,7 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
   };
 
   return (
-    <div className="flex h-full w-full overflow-hidden relative">
+    <div className={`flex h-full w-full overflow-hidden relative ${!activeCategory ? 'flyout-closed' : ''}`}>
       <Toolbox
         workspace={workspaceState}
         activeCategory={activeCategory}

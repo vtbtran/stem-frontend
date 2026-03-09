@@ -2,8 +2,10 @@
 
 import { useState, useRef, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { aiExplainWorkspace, aiFixWorkspace, aiExplainAndFixWorkspace, aiGenerateBlocksWithAllowlist, aiGetChallenge } from "@/lib/ai/api";
+import { TOOLBOX_CONFIG } from "../workspace/toolboxConfig";
 
-type AIMode = "generate" | "fix" | "explain";
+type AIMode = "generate" | "fix" | "explain" | "challenge" | "explainFix";
 
 interface AIContext {
     code: string;
@@ -33,11 +35,37 @@ const QUICK_PROMPTS = [
     { label: "Tránh vật cản", prompt: "Tạo code cho robot tránh vật cản" },
 ];
 
+const MODE_ACTIVE_CLASS: Record<AIMode, string> = {
+    generate: "bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/50",
+    fix: "bg-amber-600/20 text-amber-400 ring-1 ring-amber-500/50",
+    explain: "bg-blue-600/20 text-blue-400 ring-1 ring-blue-500/50",
+    explainFix: "bg-violet-600/20 text-violet-400 ring-1 ring-violet-500/50",
+    challenge: "bg-cyan-600/20 text-cyan-400 ring-1 ring-cyan-500/50",
+};
+
 interface AIContextType {
     code: string;
     language: "js" | "py" | "cpp";
     selectedCode?: string;
     terminalLogs: string[];
+}
+
+function getAllowedBlockTypes(): string[] {
+    const types: string[] = [];
+    const visit = (node: unknown) => {
+        if (!node || typeof node !== "object") return;
+        if (Array.isArray(node)) return node.forEach(visit);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const n: any = node;
+        if (n.kind === "block" && typeof n.type === "string") types.push(n.type);
+        if (n.contents) visit(n.contents);
+        if (n.inputs) visit(n.inputs);
+        if (n.block) visit(n.block);
+        if (n.shadow) visit(n.shadow);
+    };
+    visit((TOOLBOX_CONFIG as unknown as { contents: unknown }).contents);
+    // remove duplicates
+    return [...new Set(types)];
 }
 
 interface AIContextIndicatorProps {
@@ -145,18 +173,24 @@ export default function AIPanel({ context, onApplyCode, onInsertCode }: AIPanelP
     const [history, setHistory] = useState<Array<{ prompt: string; result: AIResultType }>>([]);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const resultRef = useRef<HTMLDivElement>(null);
+    const [workspaceJson, setWorkspaceJson] = useState<unknown>(null);
+    const allowedBlockTypes = useRef<string[]>(getAllowedBlockTypes());
 
     const placeholders: Record<AIMode, string> = {
-        generate: "Mô tả hành vi của xe... VD: Đi thẳng rồi rẽ phải",
-        fix: "Nhấn gửi để AI phân tích lỗi từ Terminal",
-        explain: "Nhấn gửi để AI giải thích code đang chọn",
+        generate: "Mô tả chương trình bạn muốn tạo khối... VD: Đi thẳng 2s rồi rẽ phải",
+        fix: "Mô tả lỗi/ý muốn sửa... VD: Đang chạy mãi, hãy dừng sau 3 lần",
+        explain: "Nhấn gửi để AI giải thích các khối hiện tại",
+        explainFix: "Mô tả mục tiêu; AI sẽ vừa giải thích vừa sửa khối",
+        challenge: "Nhấn gửi để AI giao bài tập",
     };
 
     const modeConfig = {
-        generate: { icon: "✨", label: "Tạo mới", color: "emerald" },
-        fix: { icon: "🔧", label: "Sửa lỗi", color: "amber" },
+        generate: { icon: "✨", label: "Tạo khối", color: "emerald" },
+        fix: { icon: "🔧", label: "Fix khối", color: "amber" },
         explain: { icon: "📖", label: "Giải thích", color: "blue" },
-    };
+        explainFix: { icon: "🧠", label: "Giải thích + Sửa", color: "violet" },
+        challenge: { icon: "🎯", label: "Bài tập", color: "cyan" },
+    } as const;
 
     const handleSubmit = async () => {
         if (isLoading) return;
@@ -164,35 +198,54 @@ export default function AIPanel({ context, onApplyCode, onInsertCode }: AIPanelP
         setIsLoading(true);
         setResult(null);
 
-        // Simulate AI response (replace with actual API call)
-        setTimeout(() => {
-            let mockResult: AIResultType;
+        try {
+            let aiResult: AIResultType;
 
             if (mode === "generate") {
-                mockResult = {
-                    text: `Đây là code ${context.language.toUpperCase()} để thực hiện: "${prompt || 'hành động mặc định'}"`,
-                    codeBlock: generateMockCode(context.language, prompt),
-                };
+                const promptText = prompt || "Tạo một chương trình Blockly đơn giản";
+                const res = await aiGenerateBlocksWithAllowlist(promptText, allowedBlockTypes.current);
+                // Apply to workspace immediately
+                window.dispatchEvent(new CustomEvent("blockly:workspace_load", { detail: { workspace: res.blocklyJson } }));
+                aiResult = { text: "✅ Đã tạo khối và nạp vào workspace. Bạn hãy xem bên trái nhé!" };
             } else if (mode === "fix") {
-                const hasErrors = context.terminalLogs?.some(log => log.toLowerCase().includes("error"));
-                mockResult = {
-                    text: hasErrors
-                        ? "Tôi đã phân tích lỗi trong Terminal. Đây là cách sửa:"
-                        : "Không tìm thấy lỗi nào trong Terminal.",
-                    codeBlock: hasErrors ? generateFixCode(context.language) : undefined,
-                };
+                if (!workspaceJson) {
+                    aiResult = { text: "Chưa lấy được workspace. Hãy kéo vài khối vào rồi thử lại." };
+                } else {
+                    const res = await aiFixWorkspace(workspaceJson, allowedBlockTypes.current, prompt || undefined);
+                    window.dispatchEvent(new CustomEvent("blockly:workspace_load", { detail: { workspace: res.blocklyJson } }));
+                    aiResult = { text: "🛠️ Đã sửa workspace và nạp lại. Nếu vẫn sai, gửi thêm mô tả mục tiêu để mình sửa tiếp." };
+                }
+            } else if (mode === "explain") {
+                if (!workspaceJson) {
+                    aiResult = { text: "Chưa lấy được workspace. Hãy kéo vài khối vào rồi thử lại." };
+                } else {
+                    const res = await aiExplainWorkspace(workspaceJson);
+                    aiResult = { text: res.text };
+                }
+            } else if (mode === "explainFix") {
+                if (!workspaceJson) {
+                    aiResult = { text: "Chưa lấy được workspace. Hãy kéo vài khối vào rồi thử lại." };
+                } else {
+                    const res = await aiExplainAndFixWorkspace(workspaceJson, allowedBlockTypes.current, prompt || undefined);
+                    window.dispatchEvent(new CustomEvent("blockly:workspace_load", { detail: { workspace: res.blocklyJson } }));
+                    aiResult = { text: res.explanation };
+                }
             } else {
-                mockResult = {
-                    text: context.selectedCode
-                        ? `Đoạn code này thực hiện: ${explainCode(context.selectedCode)}`
-                        : `Code hiện tại sử dụng ngôn ngữ ${context.language.toUpperCase()}. ${explainCode(context.code)}`,
-                };
+                // challenge
+                const res = await aiGetChallenge();
+                aiResult = { text: res.text };
             }
 
-            setResult(mockResult);
-            setHistory(prev => [...prev, { prompt: prompt || `[${modeConfig[mode].label}]`, result: mockResult }]);
+            setResult(aiResult);
+            setHistory(prev => [...prev, { prompt: prompt || `[${modeConfig[mode].label}]`, result: aiResult }]);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            setResult({
+                text: `Có lỗi khi gọi AI: ${message}`,
+            });
+        } finally {
             setIsLoading(false);
-        }, 1500);
+        }
     };
 
     const handleQuickPrompt = (quickPrompt: string) => {
@@ -231,6 +284,15 @@ export default function AIPanel({ context, onApplyCode, onInsertCode }: AIPanelP
         }
     }, [result]);
 
+    useEffect(() => {
+        const onWs = (e: Event) => {
+            const ce = e as CustomEvent<{ workspace: unknown }>;
+            setWorkspaceJson(ce.detail?.workspace ?? null);
+        };
+        window.addEventListener("blockly:workspace", onWs as EventListener);
+        return () => window.removeEventListener("blockly:workspace", onWs as EventListener);
+    }, []);
+
     return (
         <div className="flex flex-col h-full bg-[#0B0F14] text-slate-200 overflow-hidden">
             {/* Header */}
@@ -252,7 +314,7 @@ export default function AIPanel({ context, onApplyCode, onInsertCode }: AIPanelP
                             key={m}
                             onClick={() => setMode(m)}
                             className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all ${isActive
-                                    ? `bg-${config.color}-600/20 text-${config.color}-400 ring-1 ring-${config.color}-500/50`
+                                    ? MODE_ACTIVE_CLASS[m]
                                     : "text-slate-500 hover:text-slate-300 hover:bg-slate-800"
                                 }`}
                         >

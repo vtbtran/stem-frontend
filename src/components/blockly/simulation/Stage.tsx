@@ -55,7 +55,7 @@ export default function Stage() {
 
             // --- 0. XỬ LÝ PHANH KHẨN CẤP ---
             // Khi nhận lệnh stop (val=0, dur=0), dừng ngay lập tức hoạt ảnh đang chạy
-            if (type === "MOTION_MOVE" && typeof value === 'object' && value.val === 0 && value.dur === 0) {
+            if (type === "MOTION_MOVE" && typeof value === 'object' && 'val' in value && 'dur' in value && value.val === 0 && value.dur === 0) {
                 if (requestRef.current) {
                     cancelAnimationFrame(requestRef.current);
                     requestRef.current = null;
