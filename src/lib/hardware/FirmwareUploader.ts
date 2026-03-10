@@ -80,10 +80,10 @@ export class FirmwareUploader {
                 await transport.setDTR(true);  // Nhấn nút BOOT (phần mềm)
                 await transport.setRTS(true);  // Nhấn nút RESET (phần mềm)
                 await this.delay(100);
-                
+
                 await transport.setRTS(false); // Thả nút RESET (Chip tỉnh dậy)
                 await this.delay(200);         // Chờ chip nhận tín hiệu BOOT
-                
+
                 await transport.setDTR(false); // Thả nút BOOT
                 await this.delay(100);
             } catch (e) {
@@ -168,10 +168,22 @@ export class FirmwareUploader {
             // Cleanup transport
             try {
                 if (transport) {
+                    // 1. Lệnh này của esptool sẽ nhả lock và ĐÓNG cổng
                     await transport.disconnect();
+
+                    // 2. Đợi nửa giây cho ESP32 khởi động lại xong
+                    await this.delay(500);
+
+                    // 3. TỰ ĐỘNG MỞ LẠI CỔNG
+                    // Giữ cho port luôn mở để sẵn sàng nạp lần 2, lần 3...
+                    if (this.port) {
+                        await this.port.open({ baudRate: 115200 });
+                        this.term.writeln("🔄 Đã tự động khôi phục kết nối cổng Serial.");
+                    }
                 }
             } catch (e) {
-                console.error("Error during transport disconnect:", e);
+                console.error("Error during transport disconnect/reconnect:", e);
+                this.term.writeln("⚠️ Không thể tự động mở lại cổng. Vui lòng kết nối lại thủ công.");
             }
         }
     }

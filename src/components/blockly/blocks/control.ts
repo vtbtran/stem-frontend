@@ -42,6 +42,7 @@ export const defineControlBlocks = () => {
             this.appendStatementInput("DO")
                 .setCheck(null);
             this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
             this.setColour("#4C97FF"); // Match Motion Blue
             this.setTooltip("Lặp lại các khối bên trong số lần nhất định");
             this.setHelpUrl("");
