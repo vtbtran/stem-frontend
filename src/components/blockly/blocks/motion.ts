@@ -144,24 +144,32 @@ export const defineMotionBlocks = () => {
     // CPP GENERATORS
     // ==========================================
     (cppGenerator as any).forBlock['motion_move_forward'] = function (block: Blockly.Block) {
+        (cppGenerator as any).definitions_['include_vehicle'] = '#include <vehicle.h>\nvehicle myCar;';
+        (cppGenerator as any).setups_['setup_vehicle'] = 'myCar.Init();';
         const speed = (cppGenerator as any).valueToCode(block, 'SPEED', 0) || '255';
         const secs = (cppGenerator as any).valueToCode(block, 'SECS', 0) || '1';
         return `myCar.Move(Forward, ${speed});\ndelay(${secs} * 1000);\nmyCar.Move(Stop, 0);\n`;
     };
 
     (cppGenerator as any).forBlock['motion_move_backward'] = function (block: Blockly.Block) {
+        (cppGenerator as any).definitions_['include_vehicle'] = '#include <vehicle.h>\nvehicle myCar;';
+        (cppGenerator as any).setups_['setup_vehicle'] = 'myCar.Init();';
         const speed = (cppGenerator as any).valueToCode(block, 'SPEED', 0) || '255';
         const secs = (cppGenerator as any).valueToCode(block, 'SECS', 0) || '1';
         return `myCar.Move(Backward, ${speed});\ndelay(${secs} * 1000);\nmyCar.Move(Stop, 0);\n`;
     };
 
     (cppGenerator as any).forBlock['motion_turn_left'] = function (block: Blockly.Block) {
+        (cppGenerator as any).definitions_['include_vehicle'] = '#include <vehicle.h>\nvehicle myCar;';
+        (cppGenerator as any).setups_['setup_vehicle'] = 'myCar.Init();';
         const speed = (cppGenerator as any).valueToCode(block, 'SPEED', 0) || '255';
         const secs = (cppGenerator as any).valueToCode(block, 'SECS', 0) || '0.5';
         return `myCar.Move(Move_Left, ${speed});\ndelay(${secs} * 1000);\nmyCar.Move(Stop, 0);\n`;
     };
 
     (cppGenerator as any).forBlock['motion_turn_right'] = function (block: Blockly.Block) {
+        (cppGenerator as any).definitions_['include_vehicle'] = '#include <vehicle.h>\nvehicle myCar;';
+        (cppGenerator as any).setups_['setup_vehicle'] = 'myCar.Init();';
         const speed = (cppGenerator as any).valueToCode(block, 'SPEED', 0) || '255';
         const secs = (cppGenerator as any).valueToCode(block, 'SECS', 0) || '0.5';
         return `myCar.Move(Move_Right, ${speed});\ndelay(${secs} * 1000);\nmyCar.Move(Stop, 0);\n`;
