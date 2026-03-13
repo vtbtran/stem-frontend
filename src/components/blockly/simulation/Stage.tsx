@@ -11,6 +11,8 @@ export default function Stage() {
     const [viewPosition, setViewPosition] = useState({ x: 0, y: 0 });
     const [stageSize, setStageSize] = useState({ w: 800, h: 600 });
     const [speechText, setSpeechText] = useState<string | null>(null);
+    const [ledOn, setLedOn] = useState(false);
+    const [ledBrightness, setLedBrightness] = useState(255);
     const [transitionDuration, setTransitionDuration] = useState(0.4);
 
     // Track stage size for dynamic culling
@@ -158,6 +160,16 @@ export default function Stage() {
             if (e.detail.action === "say") {
                 setSpeechText(e.detail.value.text);
                 setTimeout(() => setSpeechText(null), e.detail.value.duration * 1000);
+            } else if (e.detail.action === "on") {
+                setLedOn(true);
+                setLedBrightness(255);
+            } else if (e.detail.action === "off") {
+                setLedOn(false);
+                setLedBrightness(0);
+            } else if (e.detail.action === "brightness") {
+                const b = typeof e.detail.value === "number" ? e.detail.value : 0;
+                setLedOn(b > 0);
+                setLedBrightness(b);
             }
         };
 
@@ -303,7 +315,10 @@ export default function Stage() {
                                 alt="Car sprite"
                                 width={48}
                                 height={48}
-                                className="w-full h-full object-contain drop-shadow-md"
+                                className="w-full h-full object-contain transition-all duration-300"
+                                style={{
+                                    filter: ledOn ? `drop-shadow(0px 0px 15px rgba(255, 50, 50, ${ledBrightness / 255})) brightness(1.1)` : 'drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.1))'
+                                }}
                             />
                         </div>
 

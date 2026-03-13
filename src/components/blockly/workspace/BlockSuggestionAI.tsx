@@ -128,14 +128,14 @@ export default function BlockSuggestionAI({ isOpen, onClose }: BlockSuggestionAI
     }, []);
 
     const generateId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-    
+
     // Scroll chat to bottom
     const scrollToBottom = () => {
         if (chatContainerRef.current) {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
     };
-    
+
     // Auto scroll khi có tin nhắn mới
     useEffect(() => {
         scrollToBottom();
@@ -144,7 +144,7 @@ export default function BlockSuggestionAI({ isOpen, onClose }: BlockSuggestionAI
     const handleSend = async () => {
         const text = inputValue.trim();
         if (!text) return;
-        
+
         // Thêm tin nhắn user vào lịch sử ngay lập tức
         const userMsg: ChatMessage = {
             id: generateId(),
@@ -156,23 +156,23 @@ export default function BlockSuggestionAI({ isOpen, onClose }: BlockSuggestionAI
         setChatHistory(prev => [...prev, userMsg]);
         setIsThinking(true);
         setAiMessage("");
-        
+
         try {
             let aiContent = "";
-            
+
             if (mode === "challenge") {
                 const res = await aiGetChallenge();
                 aiContent = res.text;
             } else if (mode === "generate") {
                 const res = await aiGenerateBlocksWithAllowlist(text, allowedBlockTypes);
-                const payload = { 
-                    workspace: sanitizeBlocklySerialization(res.blocklyJson), 
+                const payload = {
+                    workspace: sanitizeBlocklySerialization(res.blocklyJson),
                     source: "ai-generate",
                     preview: true
                 };
                 setPreviewWorkspace(payload);
-                window.dispatchEvent(new CustomEvent("blockly:workspace_load", { 
-                    detail: { workspace: payload.workspace, isPreview: true, source: "ai-generate" } 
+                window.dispatchEvent(new CustomEvent("blockly:workspace_load", {
+                    detail: { workspace: payload.workspace, isPreview: true, source: "ai-generate" }
                 }));
                 window.dispatchEvent(new CustomEvent("blockly:review", { detail: payload }));
                 aiContent = "✅ AI đã tạo khối. Xem ngay trên workspace! Dùng Review panel để Accept/Reject hoặc Undo/Redo.";
@@ -180,14 +180,14 @@ export default function BlockSuggestionAI({ isOpen, onClose }: BlockSuggestionAI
                 if (!workspaceJson) aiContent = "Chưa lấy được workspace. Hãy kéo vài khối vào rồi thử lại.";
                 else {
                     const res = await aiFixWorkspace(workspaceJson, allowedBlockTypes, text);
-                    const payload = { 
-                        workspace: sanitizeBlocklySerialization(res.blocklyJson), 
+                    const payload = {
+                        workspace: sanitizeBlocklySerialization(res.blocklyJson),
                         source: "ai-fix",
                         preview: true
                     };
                     setPreviewWorkspace(payload);
-                    window.dispatchEvent(new CustomEvent("blockly:workspace_load", { 
-                        detail: { workspace: payload.workspace, isPreview: true, source: "ai-fix" } 
+                    window.dispatchEvent(new CustomEvent("blockly:workspace_load", {
+                        detail: { workspace: payload.workspace, isPreview: true, source: "ai-fix" }
                     }));
                     window.dispatchEvent(new CustomEvent("blockly:review", { detail: payload }));
                     aiContent = "🛠️ AI đã sửa khối. Xem ngay trên workspace! Dùng Review panel để Accept/Reject hoặc Undo/Redo.";
@@ -203,23 +203,23 @@ export default function BlockSuggestionAI({ isOpen, onClose }: BlockSuggestionAI
                 if (!workspaceJson) aiContent = "Chưa lấy được workspace. Hãy kéo vài khối vào rồi thử lại.";
                 else {
                     const res = await aiExplainAndFixWorkspace(workspaceJson, allowedBlockTypes, text);
-                    const payload = { 
-                        workspace: sanitizeBlocklySerialization(res.blocklyJson), 
-                        source: "ai-explain-fix", 
+                    const payload = {
+                        workspace: sanitizeBlocklySerialization(res.blocklyJson),
+                        source: "ai-explain-fix",
                         explanation: res.explanation,
                         preview: true
                     };
                     setPreviewWorkspace(payload);
-                    window.dispatchEvent(new CustomEvent("blockly:workspace_load", { 
-                        detail: { workspace: payload.workspace, isPreview: true, source: "ai-explain-fix" } 
+                    window.dispatchEvent(new CustomEvent("blockly:workspace_load", {
+                        detail: { workspace: payload.workspace, isPreview: true, source: "ai-explain-fix" }
                     }));
                     window.dispatchEvent(new CustomEvent("blockly:review", { detail: payload }));
                     aiContent = res.explanation + "\n\n✅ AI đã sửa khối. Xem ngay trên workspace! Dùng Review panel để Accept/Reject hoặc Undo/Redo.";
                 }
             }
-            
+
             setAiMessage(aiContent);
-            
+
             // Thêm tin nhắn AI vào lịch sử
             const aiMsg: ChatMessage = {
                 id: generateId(),
@@ -229,12 +229,12 @@ export default function BlockSuggestionAI({ isOpen, onClose }: BlockSuggestionAI
                 mode
             };
             setChatHistory(prev => [...prev, aiMsg]);
-            
+
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
             const errorContent = `Có lỗi khi gọi AI: ${msg}`;
             setAiMessage(errorContent);
-            
+
             // Thêm tin nhắn lỗi vào lịch sử
             const errorMsg: ChatMessage = {
                 id: generateId(),
@@ -366,7 +366,7 @@ export default function BlockSuggestionAI({ isOpen, onClose }: BlockSuggestionAI
                         <div className="flex-1 min-h-0 bg-white">
                             {/* Chat / Output - Full Width */}
                             <div className="h-full flex flex-col">
-                                <div 
+                                <div
                                     ref={chatContainerRef}
                                     className="flex-1 min-h-0 p-5 overflow-y-auto space-y-4"
                                 >
@@ -378,7 +378,7 @@ export default function BlockSuggestionAI({ isOpen, onClose }: BlockSuggestionAI
                                             </div>
                                             <h4 className="text-lg font-bold text-slate-800 mb-2">AI Trợ lý Lập trình</h4>
                                             <p className="text-sm text-slate-500 max-w-md">
-                                                Chọn chế độ ở trên, nhập yêu cầu và bấm Gửi. 
+                                                Chọn chế độ ở trên, nhập yêu cầu và bấm Gửi.
                                                 AI sẽ giúp bạn tạo khối, sửa lỗi, giải thích code hoặc giao bài tập.
                                             </p>
                                             <div className="flex flex-wrap gap-2 mt-6 justify-center">
@@ -406,21 +406,19 @@ export default function BlockSuggestionAI({ isOpen, onClose }: BlockSuggestionAI
                                                 className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
                                             >
                                                 {/* Avatar */}
-                                                <div className={`w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center text-lg border shadow-sm ${
-                                                    msg.role === "user" 
-                                                        ? "bg-slate-800 border-slate-700 text-white" 
+                                                <div className={`w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center text-lg border shadow-sm ${msg.role === "user"
+                                                        ? "bg-slate-800 border-slate-700 text-white"
                                                         : "bg-white border-slate-200"
-                                                }`}>
+                                                    }`}>
                                                     {msg.role === "user" ? "👤" : "🤖"}
                                                 </div>
-                                                
+
                                                 {/* Message bubble */}
                                                 <div className={`max-w-[75%] ${msg.role === "user" ? "text-right" : ""}`}>
-                                                    <div className={`inline-block rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap leading-relaxed ${
-                                                        msg.role === "user"
+                                                    <div className={`inline-block rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap leading-relaxed ${msg.role === "user"
                                                             ? "bg-slate-800 text-white text-left"
                                                             : "bg-slate-100 text-slate-800 text-left border border-slate-200"
-                                                    }`}>
+                                                        }`}>
                                                         {msg.content}
                                                     </div>
                                                     <p className="text-[10px] text-slate-400 mt-1">
@@ -439,7 +437,7 @@ export default function BlockSuggestionAI({ isOpen, onClose }: BlockSuggestionAI
                                             </div>
                                         ))
                                     )}
-                                    
+
                                     {/* Typing indicator */}
                                     {isThinking && (
                                         <div className="flex gap-3">
@@ -466,10 +464,10 @@ export default function BlockSuggestionAI({ isOpen, onClose }: BlockSuggestionAI
                                                 onChange={(e) => setInputValue(e.target.value)}
                                                 placeholder={
                                                     mode === "generate" ? "Ví dụ: đi thẳng 2s rồi rẽ phải" :
-                                                    mode === "fix" ? "Ví dụ: chương trình chạy mãi, hãy dừng sau 3 lần" :
-                                                    mode === "explain" ? "Ví dụ: giải thích chương trình hiện tại" :
-                                                    mode === "explainFix" ? "Ví dụ: giải thích và sửa để robot đi hình vuông" :
-                                                    "Ví dụ: cho em một bài tập về vòng lặp"
+                                                        mode === "fix" ? "Ví dụ: chương trình chạy mãi, hãy dừng sau 3 lần" :
+                                                            mode === "explain" ? "Ví dụ: giải thích chương trình hiện tại" :
+                                                                mode === "explainFix" ? "Ví dụ: giải thích và sửa để robot đi hình vuông" :
+                                                                    "Ví dụ: cho em một bài tập về vòng lặp"
                                                 }
                                                 rows={2}
                                                 className="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-all"

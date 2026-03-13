@@ -39,7 +39,7 @@ export default function HardwareConnect() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-const handleConnect = async () => {
+  const handleConnect = async () => {
     setIsConnecting(true);
     // Lưu cài đặt
     localStorage.setItem("robot-transport", transportType);
@@ -54,7 +54,7 @@ const handleConnect = async () => {
     try {
       // Bọc lệnh này để kiểm soát hoàn toàn việc đóng/mở popover và loading
       const success = await controller.connect(transportType);
-      
+
       if (success) {
         console.log(`🚀 Hardware Connected via ${transportType}`);
         setIsConnected(true);
@@ -143,8 +143,8 @@ const handleConnect = async () => {
                     <button
                       onClick={() => setTransportType(TransportType.SERIAL)}
                       className={`flex-1 flex items-center justify-center gap-2 h-10 rounded-lg transition-all duration-200 font-semibold text-sm ${transportType === TransportType.SERIAL
-                          ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
-                          : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                        ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
+                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
                         }`}
                     >
                       <div className="w-4 h-4 bg-current" style={{ maskImage: 'url("/icons/usb.png")', maskSize: 'contain', maskRepeat: 'no-repeat', maskPosition: 'center', WebkitMaskImage: 'url("/icons/usb.png")', WebkitMaskSize: 'contain', WebkitMaskRepeat: 'no-repeat', WebkitMaskPosition: 'center' }} />
@@ -154,8 +154,8 @@ const handleConnect = async () => {
                     <button
                       onClick={() => setTransportType(TransportType.WIFI)}
                       className={`flex-1 flex items-center justify-center gap-2 h-10 rounded-lg transition-all duration-200 font-semibold text-sm ${transportType === TransportType.WIFI
-                          ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
-                          : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                        ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
+                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
                         }`}
                     >
                       <div className="w-4 h-4 bg-current" style={{ maskImage: 'url("/icons/radio.png")', maskSize: 'contain', maskRepeat: 'no-repeat', maskPosition: 'center', WebkitMaskImage: 'url("/icons/radio.png")', WebkitMaskSize: 'contain', WebkitMaskRepeat: 'no-repeat', WebkitMaskPosition: 'center' }} />
@@ -244,6 +244,18 @@ const handleConnect = async () => {
                     </>
                   )}
                 </button>
+
+                {/* Firmware Setup Link */}
+                <div className="mt-3 text-center">
+                  <a
+                    href="/firmware-setup"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-slate-400 hover:text-blue-500 transition-colors"
+                  >
+                    🔧 Lần đầu sử dụng? <span className="underline underline-offset-2">Cài đặt Robot</span>
+                  </a>
+                </div>
               </div>
             </motion.div>
           </>

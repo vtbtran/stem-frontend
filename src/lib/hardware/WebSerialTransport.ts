@@ -11,15 +11,45 @@ export class WebSerialTransport implements ITransport {
 
     public isConnected: boolean = false;
 
-    async connect(): Promise<boolean> {
+    async connect(autoConnect: boolean = false): Promise<boolean> {
         if (!navigator.serial) {
             alert("Web Serial is not supported in this browser.");
             return false;
         }
 
         try {
-            this.port = await navigator.serial.requestPort();
-            await this.port.open({ baudRate: 115200 });
+            // If we're auto-connecting (e.g., after upload), try to use the cached port
+            if (autoConnect) {
+                if (!this.port) {
+                    const ports = await navigator.serial.getPorts();
+                    if (ports.length > 0) {
+                        this.port = ports[0];
+                    }
+                }
+            } else {
+                // Not auto-connecting (user explicitly clicked Connect) -> always ask for a port
+                this.port = null;
+            }
+
+            // Try opening the port if we have one (from cache)
+            if (this.port) {
+                try {
+                    await this.port.open({ baudRate: 115200 });
+                } catch (e: any) {
+                    if (e.name !== 'InvalidStateError') {
+                        // Port might be disconnected physically or error, discard it
+                        this.port = null;
+                        console.warn("Cached port failed to open, asking user to select again.", e);
+                    }
+                }
+            }
+
+            // If port is still null (no cached port, cached port failed, or user clicked Connect explicitly), request a new one
+            if (!this.port) {
+                this.port = await navigator.serial.requestPort();
+                await this.port.open({ baudRate: 115200 });
+            }
+
             this.isConnected = true;
 
             if (!this.port.writable) throw new Error("Port not writable");
@@ -61,7 +91,8 @@ export class WebSerialTransport implements ITransport {
 
         if (this.port) {
             await this.port.close();
-            this.port = null;
+            // DO NOT set this.port = null here, so we can reconnect to it later
+            // without needing a user gesture (requestPort)
         }
         this.isConnected = false;
     }

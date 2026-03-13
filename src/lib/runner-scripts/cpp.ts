@@ -19,7 +19,7 @@ export const CPP_SCRIPT = `
      const functions = [
        'moveForward', 'moveBackward', 'turnLeft', 'turnRight', 
        'beep', 'tone', 'moveForwardTime', 'moveBackwardTime', 'say',
-       'led', 'servo', 'delay'
+       'led', 'servo', 'delay', 'setLedBrightness'
      ];
      
      functions.forEach(fn => {

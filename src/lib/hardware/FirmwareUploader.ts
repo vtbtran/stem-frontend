@@ -170,20 +170,10 @@ export class FirmwareUploader {
                 if (transport) {
                     // 1. Lệnh này của esptool sẽ nhả lock và ĐÓNG cổng
                     await transport.disconnect();
-
-                    // 2. Đợi nửa giây cho ESP32 khởi động lại xong
-                    await this.delay(500);
-
-                    // 3. TỰ ĐỘNG MỞ LẠI CỔNG
-                    // Giữ cho port luôn mở để sẵn sàng nạp lần 2, lần 3...
-                    if (this.port) {
-                        await this.port.open({ baudRate: 115200 });
-                        this.term.writeln("🔄 Đã tự động khôi phục kết nối cổng Serial.");
-                    }
                 }
             } catch (e) {
                 console.error("Error during transport disconnect/reconnect:", e);
-                this.term.writeln("⚠️ Không thể tự động mở lại cổng. Vui lòng kết nối lại thủ công.");
+                this.term.writeln("⚠️ Vui lòng kết nối lại thủ công.");
             }
         }
     }
@@ -199,4 +189,128 @@ export class FirmwareUploader {
         }
         return dataString;
     }
+
+    /**
+     * Flash Base Firmware (.bin) trực tiếp từ Web.
+     * Người dùng không cần cài Arduino IDE.
+     * 
+     * @param binUrl - URL tới file .bin (mặc định: /firmware/onyx_base.bin)
+     * @param onProgress - Callback cho tiến trình (0-100)
+     * @param onLog - Callback cho log messages
+     */
+    static isFlashing: boolean = false;
+
+    static async flashBaseFirmware(
+        binUrl: string = "/firmware/",
+        onProgress?: (pct: number) => void,
+        onLog?: (msg: string) => void
+    ): Promise<void> {
+        if (this.isFlashing) {
+            console.log("⚠️ Tiến trình đang chạy...");
+            return;
+        }
+
+        const log = onLog || console.log;
+        let port: SerialPort | null = null;
+        let transport: Transport | null = null;
+
+        try {
+            log("🔌 Chọn cổng USB của Robot...");
+            port = await navigator.serial.requestPort();
+        } catch (e) {
+            throw new Error("Người dùng đã hủy chọn cổng USB.");
+        }
+
+        this.isFlashing = true;
+        const term = {
+            writeln: (msg: string) => log(msg),
+            write: (msg: string) => log(msg),
+            clean: () => { },
+            writeLine: (msg: string) => log(msg),
+        };
+
+        const uploader = new FirmwareUploader(port, term);
+
+        try {
+            log("📥 Đang tải các file hệ thống từ server...");
+            onProgress?.(5);
+
+            const loadFile = async (fileName: string) => {
+                const url = `/firmware/${fileName}?t=${Date.now()}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`Không tìm thấy file ${fileName}`);
+                const buffer = await response.arrayBuffer();
+                log(`📦 Đã tải ${fileName}`);
+                return uploader.uint8ArrayToString(new Uint8Array(buffer));
+            };
+
+            const bootloaderData = await loadFile("bootloader.bin");
+            const partitionsData = await loadFile("partitions.bin");
+            const bootAppData = await loadFile("boot_app0.bin");
+            const appData = await loadFile("onyx_base.bin");
+
+            log("✅ Đã tải xong. Bắt đầu giao tiếp với ESP32...");
+            onProgress?.(10);
+
+            // GIAO TOÀN QUYỀN CHO ESPTOOL, KHÔNG TỰ Ý CAN THIỆP CỔNG
+            transport = new Transport(port);
+
+            const loader = new ESPLoader({
+                transport,
+                baudrate: 115200,
+                romBaudrate: 115200,
+                terminal: term,
+            });
+
+            // Lệnh này sẽ tự động lo việc reset mạch và mở cổng chuẩn xác nhất
+            await loader.main();
+
+            const fileArray = [
+                { data: bootloaderData, address: 0x1000 },
+                { data: partitionsData, address: 0x8000 },
+                { data: bootAppData, address: 0xe000 },
+                { data: appData, address: 0x10000 }
+            ];
+
+            log("🔥 Đang nạp hệ điều hành (Có thể mất 40-60 giây)...");
+
+            await loader.writeFlash({
+                fileArray: fileArray,
+                flashSize: "4MB",
+                flashMode: "dio",
+                flashFreq: "40m",
+                eraseAll: true, // Xóa trắng để gọi mạng Onyx_Setup
+                compress: true,
+                reportProgress: (fileIndex: number, written: number, total: number) => {
+                    const fileProgress = (written / total) * 100;
+                    const overallProgress = 10 + ((fileIndex + (fileProgress / 100)) / fileArray.length) * 90;
+                    onProgress?.(Math.round(overallProgress));
+                }
+            });
+
+            log("✨ Khởi động lại Robot...");
+            await transport.setDTR(false);
+            await transport.setRTS(true);
+            await new Promise((r) => setTimeout(r, 100));
+            await transport.setRTS(false);
+
+            onProgress?.(100);
+            log("🎉 Nạp Base Firmware thành công! Hãy kết nối WiFi 'Onyx_Setup'.");
+
+        } catch (error) {
+            log(`❌ Lỗi nạp firmware: ${error}`);
+            throw error;
+        } finally {
+            this.isFlashing = false;
+            // CHỈ dùng hàm disconnect của thư viện để nó nhả khóa stream một cách an toàn
+            if (transport) {
+                try {
+                    await transport.disconnect();
+                } catch (e) {
+                    console.log("Lỗi ngắt kết nối an toàn:", e);
+                }
+            }
+        }
+    }
 }
+

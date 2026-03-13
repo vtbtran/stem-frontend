@@ -205,25 +205,7 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
       move: { scrollbars: true, drag: true, wheel: false },
     });
 
-    // Thêm Listener lắng nghe sự kiện của workspace
-    ws.addChangeListener((event) => {
-      // 1. Bắt sự kiện TẠO block (đoạn code canh giữa lúc nãy)
-      if (event.type === Blockly.Events.BLOCK_CREATE) {
-        const block = ws.getBlockById(event.blockId);
-        if (block && !ws.isDragging()) {
-          const metricsManager = ws.getMetricsManager();
-          const viewMetrics = metricsManager.getViewMetrics(true);
-          const blockHW = block.getHeightWidth();
-
-          const centerX = viewMetrics.left + (viewMetrics.width / 2.5) - (blockHW.width / 2);
-          const centerY = viewMetrics.top + (viewMetrics.height / 2) - (blockHW.height / 2);
-          const currentXY = block.getRelativeToSurfaceXY();
-
-          block.moveBy(centerX - currentXY.x, centerY - currentXY.y);
-        }
-      }
-
-    });
+    // Legacy buggy BLOCK_CREATE listener removed
 
     // -------------------------------------------------------------
     // Initialize workspace and multiselect
@@ -260,11 +242,38 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
                 if (!isDragging) {
                   const blockToCreate = flyoutWs.getBlockById(clickEvent.blockId);
                   if (blockToCreate) {
+                    let newBlockId: string | null = null;
+                    const createListener = (event: Blockly.Events.Abstract) => {
+                      if (event.type === Blockly.Events.CREATE && (event as any).blockId) {
+                        newBlockId = (event as any).blockId;
+                      }
+                    };
+                    ws.addChangeListener(createListener);
+
                     const xml = Blockly.utils.xml.createElement('xml');
                     const blockDom = Blockly.Xml.blockToDom(blockToCreate) as Element;
                     xml.appendChild(blockDom);
                     Blockly.Xml.domToWorkspace(xml, ws);
-                    // The new block will be auto-centered by the BLOCK_CREATE event listener
+
+                    ws.removeChangeListener(createListener);
+
+                    if (newBlockId) {
+                      const newBlock = ws.getBlockById(newBlockId);
+                      if (newBlock) {
+                        // Center the new block in the middle of current view
+                        setTimeout(() => {
+                          const metricsManager = ws.getMetricsManager();
+                          const viewMetrics = metricsManager.getViewMetrics(true); // workspace coords
+                          const blockHW = newBlock.getHeightWidth();
+
+                          const targetX = viewMetrics.left + (viewMetrics.width / 2) - (blockHW.width / 2);
+                          const targetY = viewMetrics.top + (viewMetrics.height / 2) - (blockHW.height / 2);
+
+                          const currentXY = newBlock.getRelativeToSurfaceXY();
+                          newBlock.moveBy(targetX - currentXY.x, targetY - currentXY.y);
+                        }, 10);
+                      }
+                    }
                   }
                 }
               }
@@ -370,36 +379,6 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
     const onChange = (e: Blockly.Events.Abstract) => {
       ensureToolboxSelected();
       if (!e.isUiEvent) emitCode();
-
-      // Auto-center blocks clicked from Toolbox
-      if (e.type === Blockly.Events.CREATE) {
-        const createEvt = e as Blockly.Events.BlockCreate;
-        if (createEvt.xml && createEvt.recordUndo) {
-          setTimeout(() => {
-            if (!workspaceRef.current) return;
-            const activeWs = workspaceRef.current;
-            const block = activeWs.getBlockById(createEvt.blockId!);
-            if (!block) return;
-
-            // Check if user is currently dragging it
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const gesture = (activeWs as any).getGesture?.() || (Blockly as any).Gesture?.inProgress?.();
-            const isDragging = gesture && typeof gesture.isDragging === 'function' ? gesture.isDragging() : false;
-
-            if (!isDragging) {
-              const metrics = activeWs.getMetrics();
-              const targetX = (metrics.viewLeft + metrics.viewWidth / 2) / activeWs.scale - 80;
-              const targetY = (metrics.viewTop + metrics.viewHeight / 2) / activeWs.scale - 30;
-
-              const currentXY = block.getRelativeToSurfaceXY();
-              // If it's near the left edge (default flyout drop), move to center
-              if (currentXY.x < (metrics.viewLeft / activeWs.scale) + 150) {
-                block.moveBy(targetX - currentXY.x, targetY - currentXY.y);
-              }
-            }
-          }, 10);
-        }
-      }
     };
     ws.addChangeListener(onChange);
 
@@ -407,6 +386,48 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
       if (e.type === Blockly.Events.VIEWPORT_CHANGE) reflowFlyout();
     };
     ws.addChangeListener(onViewport);
+
+    // Fix: Compensate scroll when flyout width changes on category switch
+    // This keeps blocks visually stationary when the flyout panel grows/shrinks
+    let lastFlyoutWidth = 0;
+    {
+      const tb = ws.getToolbox() as Blockly.Toolbox;
+      const fly = tb?.getFlyout?.();
+      if (fly) {
+        const flyDiv = (fly as any).svgGroup_?.parentElement || (fly as any).svgGroup_;
+        lastFlyoutWidth = flyDiv?.getBoundingClientRect?.()?.width ?? 0;
+      }
+    }
+
+    const onToolboxChange = (e: Blockly.Events.Abstract) => {
+      if (e.type === Blockly.Events.TOOLBOX_ITEM_SELECT) {
+        // Measure old flyout width
+        const oldWidth = lastFlyoutWidth;
+
+        setTimeout(() => {
+          // Measure new flyout width after render
+          const tb = ws.getToolbox() as Blockly.Toolbox;
+          const fly = tb?.getFlyout?.();
+          let newWidth = 0;
+          if (fly) {
+            const flyDiv = (fly as any).svgGroup_?.parentElement || (fly as any).svgGroup_;
+            newWidth = flyDiv?.getBoundingClientRect?.()?.width ?? 0;
+          }
+
+          const diff = newWidth - oldWidth;
+          lastFlyoutWidth = newWidth;
+
+          if (diff !== 0) {
+            // Compensate scroll so blocks don't appear to move
+            ws.scroll(ws.scrollX - diff, ws.scrollY);
+          }
+
+          Blockly.svgResize(ws);
+          reflowFlyout();
+        }, 50);
+      }
+    };
+    ws.addChangeListener(onToolboxChange);
 
     // -------- Click to Run (Scratch-like) --------
     const onClick = (e: Blockly.Events.Abstract) => {
@@ -800,6 +821,15 @@ export default function BlocklyWorkspace({ language, onCode, getInitialXml, onXm
           ws.scrollCenter();
         }, 50);
       }
+    } else {
+      // Dismiss any active Blockly field editors (number inputs, dropdowns, etc.)
+      // They persist as floating DOM elements when the workspace is hidden
+      Blockly.WidgetDiv.hide();
+      Blockly.DropDownDiv.hideWithoutAnimation();
+
+      // Also remove any lingering blocklyHtmlInput elements
+      const inputs = document.querySelectorAll('.blocklyHtmlInput');
+      inputs.forEach(el => el.remove());
     }
   }, [isVisible]);
 

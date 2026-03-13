@@ -119,6 +119,14 @@ const sleep = async (ms) => {
      checkStop();
   };
 
+  window.setLedBrightness = async (pin, brightness) => {
+    checkStop();
+    console.log(\` Đèn chân \${pin} độ sáng \${brightness}\`);
+    parent.postMessage({ type: "blockly_look", action: "brightness", pin: Number(pin), value: Number(brightness) }, "*");
+    await sleep(100);
+    checkStop();
+  };
+
   window.servo = async (pin, angle) => {
   checkStop();
      console.log(\` Servo chân \${pin} góc \${angle}\`);

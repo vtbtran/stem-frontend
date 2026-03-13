@@ -30,6 +30,8 @@ export function useSimulationEvents() {
             const detail = e.detail;
             if (detail.action === "on" || detail.action === "off") {
                 RobotController.getInstance().sendCommand({ type: "look", action: detail.action });
+            } else if (detail.action === "brightness") {
+                RobotController.getInstance().sendCommand({ type: "look", action: "brightness", value: detail.value });
             }
         };
 

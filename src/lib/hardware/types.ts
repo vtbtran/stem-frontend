@@ -11,7 +11,7 @@ export interface MotionValue {
 
 export interface ITransport {
     isConnected: boolean;
-    connect(): Promise<boolean>;
+    connect(autoConnect?: boolean): Promise<boolean>;
     disconnect(): Promise<void>;
     send(data: string): Promise<void>;
     sendBinary(data: Uint8Array): Promise<void>;

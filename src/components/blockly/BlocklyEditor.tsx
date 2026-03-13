@@ -24,13 +24,14 @@ export default function BlocklyEditor() {
     h: 192,
   });
   const [isMounted, setIsMounted] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [isStageMinimized, setIsStageMinimized] = useState(false);
 
   const [showAISuggestion, setShowAISuggestion] = useState(false);
   const simElementRef = useRef<HTMLDivElement>(null);
   const activeAreaRef = useRef<HTMLDivElement>(null);
-  
-  const [toast, setToast] = useState<{message: string, type: ToastType} | null>(null);
+
+  const [toast, setToast] = useState<{ message: string, type: ToastType } | null>(null);
 
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewPayload, setReviewPayload] = useState<ReviewPayload | null>(null);
@@ -120,7 +121,7 @@ export default function BlocklyEditor() {
       setReviewOpen(true);
     };
     window.addEventListener("blockly:review", onReview as EventListener);
-    
+
     // ESC key to reject preview
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && reviewOpen) {
@@ -129,7 +130,7 @@ export default function BlocklyEditor() {
       }
     };
     window.addEventListener("keydown", onKeyDown);
-    
+
     return () => {
       window.removeEventListener("blockly:review", onReview as EventListener);
       window.removeEventListener("keydown", onKeyDown);
@@ -359,46 +360,123 @@ export default function BlocklyEditor() {
               {language === 'cpp' && (
                 <button
                   onClick={async () => {
-                    const { RobotController } = await import("@/lib/hardware/RobotController");
-                    const { WebSerialTransport } = await import("@/lib/hardware/WebSerialTransport");
-                    const { FirmwareUploader } = await import("@/lib/hardware/FirmwareUploader");
+                    if (isUploading) return;
+                    setIsUploading(true);
 
-                    const controller = RobotController.getInstance();
-                    const transport = controller.getTransport();
-                    let port: SerialPort | null = null;
+                    try {
+                      // 1. Lấy các công cụ cần thiết
+                      const { RobotController } = await import("@/lib/hardware/RobotController");
+                      const { WebSerialTransport } = await import("@/lib/hardware/WebSerialTransport");
+                      const { FirmwareUploader } = await import("@/lib/hardware/FirmwareUploader");
 
-                    if (transport instanceof WebSerialTransport) {
-                      port = transport.getPort();
-                    }
+                      const controller = RobotController.getInstance();
+                      const transport = controller.getTransport();
 
-                    if (!port) {
-                      try {
-                        port = await navigator.serial.requestPort();
-                        await port.open({ baudRate: 115200 });
-                      } catch (e) {
-                        alert("Please connect a device first.");
-                        console.error("No port selected:", e);
-                        return;
-                      }
-                    }
-
-                    if (port) {
-                      if (controller.isConnected) await controller.disconnect();
                       const term = {
                         writeln: (msg: string) => window.dispatchEvent(new CustomEvent("blockly:upload_log", { detail: { args: [msg] } })),
                         writeLine: (msg: string) => window.dispatchEvent(new CustomEvent("blockly:upload_log", { detail: { args: [msg] } })),
                         write: (msg: string) => window.dispatchEvent(new CustomEvent("blockly:upload_log", { detail: { args: [msg] } })),
                         clean: () => { }
                       };
-                      const uploader = new FirmwareUploader(port, term);
-                      const hex = await uploader.compileCode(code);
-                      if (hex) await uploader.flashFirmware(hex);
+
+                      console.log("Kiểm tra Transport hiện tại:", transport);
+
+                      // 2. RẼ NHÁNH SỬA LẠI: Bỏ instanceof, dùng Duck Typing
+                      // Kiểm tra xem transport có tồn tại, có đang kết nối, và CÓ HÀM sendBinary KHÔNG
+                      if (transport && transport.isConnected && 'sendBinary' in transport) {
+
+                        // ======== NẠP QUA WIFI (OTA) ========
+                        setToast({ message: "Đang biên dịch code...", type: "info" });
+                        term.writeln("🌐 Đang biên dịch code để nạp qua WiFi...");
+
+                        const uploader = new FirmwareUploader(null as any, term);
+                        const hex = await uploader.compileCode(code);
+
+                        if (!hex) throw new Error("Biên dịch code thất bại. Vui lòng kiểm tra lại khối lệnh.");
+
+                        term.writeln("🚀 Biên dịch thành công! Đang bắn dữ liệu xuống Robot...");
+
+                        // Chuyển mã Hex thành mảng Nhị phân (Binary)
+                        const binaryData = new Uint8Array(
+                          hex.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || []
+                        );
+
+                        // Ép kiểu sang any để gọi hàm sendBinary vì ta dùng duck typing
+                        await (transport as any).sendBinary(binaryData);
+
+                        setToast({ message: "Nạp code qua WiFi thành công!", type: "success" });
+                        term.writeln("🎉 Đã nạp thành công (OTA)! Hãy kiểm tra Robot.");
+
+                      } else {
+
+                        // ======== NẠP QUA CÁP USB ========
+                        let port: SerialPort | null = null;
+
+                        if (transport instanceof WebSerialTransport) {
+                          port = transport.getPort();
+                        }
+
+                        if (!port) {
+                          try {
+                            port = await navigator.serial.requestPort();
+                            await port.open({ baudRate: 115200 });
+                          } catch (e: any) {
+                            if (e.name !== 'NotFoundError') {
+                              setToast({ message: "Vui lòng kết nối cáp USB với Robot.", type: "error" });
+                            }
+                            return;
+                          }
+                        }
+
+                        if (port) {
+                          try {
+                            if (controller.isConnected) await controller.disconnect();
+
+                            term.writeln("🔌 Đang nạp qua cáp USB...");
+                            const uploader = new FirmwareUploader(port, term);
+                            const hex = await uploader.compileCode(code);
+
+                            if (hex) {
+                              await uploader.flashFirmware(hex);
+                              setToast({ message: "Nạp code thành công!", type: "success" });
+                            } else {
+                              throw new Error("Biên dịch code thất bại.");
+                            }
+                          } finally {
+                            try {
+                              await new Promise(resolve => setTimeout(resolve, 500));
+                              if (!controller.isConnected) {
+                                const { TransportType } = await import("@/lib/hardware/types");
+                                await controller.connect(TransportType.SERIAL, true);
+                              }
+                            } catch (e) {
+                              console.error("Lỗi phục hồi kết nối USB:", e);
+                            }
+                          }
+                        }
+                      }
+                    } catch (err: any) {
+                      const msg = err instanceof Error ? err.message : String(err);
+                      setToast({ message: `Lỗi nạp code: ${msg}`, type: "error" });
+                    } finally {
+                      setIsUploading(false);
                     }
                   }}
-                  className="h-10 px-5 rounded-xl bg-transparent border border-orange-500/30 text-orange-500 hover:bg-orange-500/10 text-xs font-bold uppercase tracking-wider active:scale-95 transition-all flex items-center gap-2"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                  <span>Upload</span>
+                  {isUploading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-1 h-4 w-4 text-orange-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Uploading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                      <span>Upload</span>
+                    </>
+                  )}
                 </button>
               )}
 
@@ -429,11 +507,11 @@ export default function BlocklyEditor() {
           </div>
         </div>
       </div>
-      <Toast 
-        message={toast?.message || ""} 
-        type={toast?.type} 
-        isVisible={!!toast} 
-        onClose={() => setToast(null)} 
+      <Toast
+        message={toast?.message || ""}
+        type={toast?.type}
+        isVisible={!!toast}
+        onClose={() => setToast(null)}
       />
     </div>
   );

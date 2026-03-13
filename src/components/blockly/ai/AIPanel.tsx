@@ -314,8 +314,8 @@ export default function AIPanel({ context, onApplyCode, onInsertCode }: AIPanelP
                             key={m}
                             onClick={() => setMode(m)}
                             className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all ${isActive
-                                    ? MODE_ACTIVE_CLASS[m]
-                                    : "text-slate-500 hover:text-slate-300 hover:bg-slate-800"
+                                ? MODE_ACTIVE_CLASS[m]
+                                : "text-slate-500 hover:text-slate-300 hover:bg-slate-800"
                                 }`}
                         >
                             <span>{config.icon}</span>

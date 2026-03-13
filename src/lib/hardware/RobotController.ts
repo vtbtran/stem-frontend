@@ -44,20 +44,27 @@ export class RobotController {
         this.ipAddress = ip;
     }
 
-    public async connect(type: TransportType): Promise<boolean> {
+    public async connect(type: TransportType, autoConnect: boolean = false): Promise<boolean> {
         if (type === TransportType.SERIAL) {
-            this.transport = new WebSerialTransport();
+            // Keep the same transport instance if it already exists, so it can reuse the saved port
+            if (!(this.transport instanceof WebSerialTransport)) {
+                this.transport = new WebSerialTransport();
+            }
         } else if (type === TransportType.MOCK) {
-            this.transport = new MockTransport();
+            if (!(this.transport instanceof MockTransport)) {
+                this.transport = new MockTransport();
+            }
         } else if (type === TransportType.WIFI) {
-            this.transport = new WifiTransport(this.ipAddress);
+            if (!(this.transport instanceof WifiTransport)) {
+                this.transport = new WifiTransport(this.ipAddress);
+            }
         } else {
             console.warn("Transport type not supported yet:", type);
             return false;
         }
 
         try {
-            const success = await this.transport.connect();
+            const success = await this.transport.connect(autoConnect);
             this.isConnected = success;
             if (success && this.transport) {
                 this.transport.onReceive((data) => {
@@ -100,15 +107,86 @@ export class RobotController {
         await this.transport.sendBinary(packet);
     }
 
+    // ===== Kiểm tra chế độ WiFi =====
+    private isWifiMode(): boolean {
+        return this.transport instanceof WifiTransport;
+    }
+
+    // ===== Gửi JSON qua WiFi =====
+    private async sendJson(data: Record<string, unknown>) {
+        if (!this.isConnected || !this.transport) return;
+        await this.transport.send(JSON.stringify(data));
+    }
+
     public async sendCommand(cmd: RobotCommand) {
         if (!this.isConnected || !this.transport) return;
 
-        const DEFAULT_SPEED = 100; // 0-255
+        // ==========================================
+        // CHẾ ĐỘ WIFI: Gửi JSON trực tiếp
+        // ==========================================
+        if (this.isWifiMode()) {
+            if (cmd.type === "motion") {
+                if (cmd.action === "move") {
+                    let speed = 100, duration = 0, dir = 1;
+                    if (typeof cmd.value === "object" && cmd.value !== null) {
+                        const obj = cmd.value as import("./types").MotionValue;
+                        speed = Math.abs(Number(obj.val));
+                        duration = Number(obj.dur) * 1000;
+                        dir = Number(obj.val) >= 0 ? 1 : -1;
+                    } else {
+                        const val = Number(cmd.value);
+                        speed = 100;
+                        duration = Math.abs(val) * 20;
+                        dir = val >= 0 ? 1 : -1;
+                    }
+                    await this.sendJson({ type: "motion", action: "move", speed, dir, duration });
+                } else if (cmd.action === "turn") {
+                    let speed = 100, duration = 0, dir = 1;
+                    if (typeof cmd.value === "object" && cmd.value !== null) {
+                        const obj = cmd.value as import("./types").MotionValue;
+                        speed = Math.abs(Number(obj.val));
+                        duration = Number(obj.dur) * 1000;
+                        dir = Number(obj.val) >= 0 ? 1 : -1;
+                    } else {
+                        const val = Number(cmd.value);
+                        speed = 100;
+                        duration = Math.abs(val) * 10;
+                        dir = val >= 0 ? 1 : -1;
+                    }
+                    await this.sendJson({ type: "motion", action: "turn", speed, dir, duration });
+                } else if (cmd.action === "stop") {
+                    await this.sendJson({ type: "motion", action: "stop" });
+                }
+            } else if (cmd.type === "look") {
+                if (cmd.action === "on") {
+                    await this.sendJson({ type: "look", action: "on" });
+                } else if (cmd.action === "off") {
+                    await this.sendJson({ type: "look", action: "off" });
+                } else if (cmd.action === "brightness") {
+                    const val = typeof cmd.value === "number" ? cmd.value : 0;
+                    await this.sendJson({ type: "look", action: "brightness", value: val, pin: (cmd as any).pin || 2 });
+                }
+            } else if (cmd.type === "servo") {
+                const angle = Number(cmd.value);
+                const safeAngle = Math.max(0, Math.min(180, angle));
+                await this.sendJson({ type: "servo", action: "set", angle: safeAngle });
+            } else if (cmd.type === "sound") {
+                if (cmd.action === "beep") {
+                    await this.sendJson({ type: "sound", action: "beep" });
+                } else if (cmd.action === "tone" && cmd.value) {
+                    const v = cmd.value as Record<string, unknown>;
+                    await this.sendJson({ type: "sound", action: "tone", freq: v.freq, duration: Number(v.dur) * 1000 });
+                }
+            }
+            return; // Đã xử lý xong cho WiFi, thoát ngay
+        }
+
+        // ==========================================
+        // CHẾ ĐỘ SERIAL/MOCK: Gửi Binary Packet (Logic cũ)
+        // ==========================================
+        const DEFAULT_SPEED = 100;
 
         if (cmd.type === "motion") {
-            // Ensure speed is set
-            // await this.sendPacket(this.DEVICE_SPEED, DEFAULT_SPEED); // This line is moved inside the move action
-
             if (cmd.action === "move") {
                 let speed = DEFAULT_SPEED;
                 let duration = 0;
@@ -116,29 +194,19 @@ export class RobotController {
 
                 if (typeof cmd.value === "object" && cmd.value !== null) {
                     const obj = cmd.value as import("./types").MotionValue;
-                    speed = Math.abs(Number(obj.val)); // Speed from block
+                    speed = Math.abs(Number(obj.val));
                     duration = Number(obj.dur) * 1000;
-                    // Direction is implied by function name (Forward/Backward) passed as sign in common.ts? 
-                    // No, common.ts sends {val: speed, dur: t}. We need to know direction.
-                    // Let's assume val is signed? 
-                    // Checking common.ts: moveBackwardTime sends val: -Number(s).
-                    // So val sign determines direction.
                     direction = Number(obj.val) >= 0 ? this.MOVE_FORWARD : this.MOVE_BACK;
                 } else {
-                    // Legacy support
                     const val = Number(cmd.value);
                     speed = DEFAULT_SPEED;
                     duration = Math.abs(val) * 20;
                     direction = val >= 0 ? this.MOVE_FORWARD : this.MOVE_BACK;
                 }
 
-                // Set Speed
                 await this.sendPacket(this.DEVICE_SPEED, speed);
-
-                // Send Move Command
                 await this.sendPacket(this.DEVICE_MOTOR, direction);
 
-                // Stop after duration
                 if (duration > 0) {
                     setTimeout(() => {
                         this.sendPacket(this.DEVICE_MOTOR, this.MOVE_STOP);
@@ -154,20 +222,15 @@ export class RobotController {
                     const obj = cmd.value as import("./types").MotionValue;
                     speed = Math.abs(Number(obj.val));
                     duration = Number(obj.dur) * 1000;
-                    // Direction
                     direction = Number(obj.val) >= 0 ? this.ROTATE_RIGHT : this.ROTATE_LEFT;
                 } else {
-                    // Legacy support
                     const val = Number(cmd.value);
                     speed = DEFAULT_SPEED;
                     duration = Math.abs(val) * 10;
                     direction = val >= 0 ? this.ROTATE_RIGHT : this.ROTATE_LEFT;
                 }
 
-                // Set Speed
                 await this.sendPacket(this.DEVICE_SPEED, speed);
-
-                // Send Turn Command
                 await this.sendPacket(this.DEVICE_MOTOR, direction);
 
                 if (duration > 0) {
@@ -177,16 +240,13 @@ export class RobotController {
                 }
             }
         } else if (cmd.type === "look") {
-            // LED Control
             if (cmd.action === "on") {
-                await this.sendPacket(this.DEVICE_LED, 255); // Max brightness
+                await this.sendPacket(this.DEVICE_LED, 255);
             } else if (cmd.action === "off") {
                 await this.sendPacket(this.DEVICE_LED, 0);
             }
         } else if (cmd.type === "servo") {
-            // Servo Control
             const angle = Number(cmd.value);
-            // Constrain angle 0-180
             const safeAngle = Math.max(0, Math.min(180, angle));
             await this.sendPacket(this.DEVICE_SERVO, safeAngle);
         }

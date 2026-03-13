@@ -34,8 +34,9 @@ export const defineLooksBlocks = () => {
     };
 
     (cppGenerator as any).forBlock['looks_say'] = function (block: Blockly.Block) {
-        const msg = block.getFieldValue('MESSAGE');
+        // const msg = block.getFieldValue('MESSAGE');
         const secs = block.getFieldValue('SECS');
-        return `say("${msg}", ${secs});\n`;
+        // Xe thật không có màn hình/loa phát giọng nói, nên lệnh "Say" sẽ chỉ đóng vai trò như một lệnh "Delay" (chờ)
+        return `delay(${secs * 1000});\n`;
     };
 };
